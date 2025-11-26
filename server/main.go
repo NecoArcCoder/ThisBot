@@ -40,4 +40,6 @@ func main() {
 	// Initialize all
 	config.Init(&common.Cfg)
 
+	// Running the server
+	Server()
 }

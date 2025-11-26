@@ -22,3 +22,7 @@ func in_sandbox_now() bool {
 func in_vm_now() bool {
 	return false
 }
+
+func install_payload() {
+
+}

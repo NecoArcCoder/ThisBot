@@ -1,0 +1,16 @@
+server:
+  host: 127.0.0.1
+  port: 8080
+database:
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  password: "1234"
+  name: thisbot
+log:
+  enabled: true
+  output: stdout
+  filepath: ./Log/config.yaml
+  level: info
+auth:
+  jwt_secret: Djg6gZ6WyrPwGqGjt3WsTi4V5pAiycTLU71Y8rBvLBhduFUS

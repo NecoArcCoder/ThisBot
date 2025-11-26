@@ -1,3 +1,6 @@
 /panel/.vs/
 /panel/panel/bin/
 /panel/panel/obj/
+/.vscode/
+/client/.vscode/
+/test/
