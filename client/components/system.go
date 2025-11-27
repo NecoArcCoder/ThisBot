@@ -81,24 +81,22 @@ func find_pid_by_name(name string) uint32 {
 	return 0
 }
 
-func reg_read_key(key registry.Key, subPath string, value string, access uint32, fInt bool) (any, error) {
-	var err error
-	var key1 registry.Key
+func reg_read_key(key registry.Key, subPath string, value string, fInt bool) any {
 
-	key1, err = registry.OpenKey(key, subPath, access)
-	if err != nil {
-		return nil, err
+	key1 := reg_create_key(key, subPath)
+	if key1 == 0 {
+		return nil
 	}
 	defer key1.Close()
 	var data any
 
 	if fInt {
-		data, _, err = key1.GetIntegerValue(value)
+		data, _, _ = key1.GetIntegerValue(value)
 	} else {
-		data, _, err = key1.GetStringValue(value)
+		data, _, _ = key1.GetStringValue(value)
 	}
 
-	return data, err
+	return data
 }
 
 func reg_delete_value(key registry.Key, subPath string, name string) bool {
@@ -123,14 +121,18 @@ func reg_delete_key(key registry.Key, subPath string) bool {
 	return true
 }
 
-func reg_create_key(key registry.Key, subPath string) bool {
-	key1, _, err := registry.CreateKey(key, subPath, registry.ALL_ACCESS)
-	if err != nil {
-		return false
-	}
-	defer key1.Close()
+func reg_create_key(root registry.Key, subPath string) registry.Key {
+	parts := strings.Split(subPath, `/`)
 
-	return true
+	k := root
+	var err error
+	for _, p := range parts {
+		k, _, err = registry.CreateKey(k, p, registry.ALL_ACCESS)
+		if err != nil {
+			return 0
+		}
+	}
+	return k
 }
 
 func reg_create_or_update_value(key registry.Key, subPath string, value string, data any, create bool) bool {
@@ -138,7 +140,7 @@ func reg_create_or_update_value(key registry.Key, subPath string, value string, 
 	var err error
 
 	if create {
-		key1, _, err = registry.CreateKey(key, subPath, registry.ALL_ACCESS)
+		key1 = reg_create_key(key, subPath)
 	} else {
 		key1, err = registry.OpenKey(key, subPath, registry.ALL_ACCESS)
 	}
@@ -150,15 +152,15 @@ func reg_create_or_update_value(key registry.Key, subPath string, value string, 
 
 	switch v := data.(type) {
 	case string:
-		return key1.SetStringValue(value, v) != nil
+		return key1.SetStringValue(value, v) == nil
 	case uint32:
-		return key1.SetDWordValue(value, v) != nil
+		return key1.SetDWordValue(value, v) == nil
 	case uint64:
-		return key1.SetQWordValue(value, v) != nil
+		return key1.SetQWordValue(value, v) == nil
 	case []byte:
-		return key1.SetBinaryValue(value, v) != nil
+		return key1.SetBinaryValue(value, v) == nil
 	case []string:
-		return key1.SetStringsValue(value, v) != nil
+		return key1.SetStringsValue(value, v) == nil
 	default:
 		return false
 	}

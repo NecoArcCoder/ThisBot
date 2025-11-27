@@ -2,12 +2,18 @@ package components
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/tls"
+	"encoding/json"
 	"io"
+	"log"
 	"net/http"
+	"strconv"
 )
 
-var clientHTTP = http.DefaultClient
+var clientHTTP = &http.Client{
+	// Timeout: 10 * time.Second,
+}
 
 var clientHTTPS = &http.Client{
 	Transport: &http.Transport{
@@ -15,6 +21,7 @@ var clientHTTPS = &http.Client{
 			InsecureSkipVerify: true,
 		},
 	},
+	// Timeout: 10 * time.Second,
 }
 
 func get_client(useSSL bool) *http.Client {
@@ -84,22 +91,79 @@ func do_post(url string, data []byte, useSSL bool) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func do_head_post(url string, body []byte, headers map[string]string, useSSL bool) ([]byte, error) {
+func do_head_post(url string, body []byte, headers map[string]string, useSSL bool) *ServerReply {
 	client := get_client(useSSL)
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	for k, v := range headers {
 		req.Header.Add(k, v)
 	}
+	// Default use json format
+	req.Header.Add("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	defer resp.Body.Close()
 
-	return io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil
+	}
+
+	reply := ServerReply{
+		Args:    make(map[string]any),
+		Headers: make(map[string]string),
+	}
+	guid := resp.Header.Get("X-Guid")
+	timestamp := resp.Header.Get("X-Time")
+	sign := resp.Header.Get("X-Sign")
+
+	reply.Headers["X-Guid"] = guid
+	reply.Headers["X-Time"] = timestamp
+	reply.Headers["X-Sign"] = sign
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil
+	}
+	err = json.Unmarshal(data, &reply)
+	if err != nil {
+		return nil
+	}
+
+	return &reply
+}
+
+func check_package_legality(pkg *ServerReply) bool {
+	// Check GUID
+	guid := pkg.Headers["X-Guid"]
+	if guid != g_guid {
+		log.Println("false GUID")
+		return false
+	}
+	// Check timestamp
+	time := pkg.Headers["X-Time"]
+	time_server, _ := strconv.ParseInt(time, 10, 64)
+	time_now := generate_utc_timestamp()
+	if time_now-time_server >= 60*1000 {
+		// Overtime
+		log.Println("Timestamp overtime")
+		return false
+	}
+
+	// Check HMAC
+	byt, _ := base64_dec(g_token)
+	client_hmac := hmac_sha256(byt, []byte(guid+time))
+	base64_server_hmac := pkg.Headers["X-Sign"]
+	server_hmac, _ := base64_dec(base64_server_hmac)
+	if !hmac.Equal(client_hmac, server_hmac) {
+		log.Println("false HMAC")
+		return false
+	}
+
+	return true
 }

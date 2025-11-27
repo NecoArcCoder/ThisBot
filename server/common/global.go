@@ -37,15 +37,16 @@ type Config struct {
 	} `yaml:"auth"`
 }
 
-type Account struct {
-	Id       int
-	Username string
-	Password string
-}
+// type Account struct {
+// 	Id       int
+// 	Username string
+// 	Password string
+// }
 
 type Client struct {
 	Id          int
 	Guid        string
+	Token       string
 	Ip          string
 	Whoami      string
 	Os          string
@@ -55,25 +56,34 @@ type Client struct {
 	Cpuinfo     string
 	Gpuinfo     string
 	Version     string
-	Lastcheckin string
+	Lastseen    string
 	Lastcommand string
 }
 
-type Command struct {
-	Id          int
-	Command     string
-	Timeanddate string
-}
+// type Command struct {
+// 	Id          int
+// 	Command     string
+// 	Timeanddate string
+// }
 
-type Lastlogin struct {
-	Id          int
-	Timeanddate string
-}
+// type Lastlogin struct {
+// 	Id          int
+// 	Timeanddate string
+// }
 
-type Tasks struct {
-	Id      int
-	Name    string
-	Guid    string
-	Command string
-	Method  string
+// type Tasks struct {
+// 	Id      int
+// 	Name    string
+// 	Guid    string
+// 	Command string
+// 	Method  string
+// }
+
+type ServerReply struct {
+	Status  int               `json:"status"`
+	Cmd     string            `json:"cmd"`
+	TaskId  int64             `json:"taskid"`
+	Args    map[string]any    `json:"args"`
+	Error   string            `json:"error"`
+	Headers map[string]string `json:"-"`
 }
