@@ -1,4 +1,4 @@
-package db
+package db1
 
 import (
 	"database/sql"

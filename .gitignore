@@ -3,5 +3,6 @@
 /panel/panel/obj/
 /.vscode/
 /client/.vscode/
+/server/.vscode/
 /test/
-/server/thisbot.sql
+/pic/
