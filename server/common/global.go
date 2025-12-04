@@ -7,9 +7,10 @@ import (
 )
 
 var (
-	Seed         = rand.New(rand.NewSource(time.Now().UnixNano()))
-	Cfg          = Config{}
-	Db   *sql.DB = nil
+	Seed            = rand.New(rand.NewSource(time.Now().UnixNano()))
+	Cfg             = Config{}
+	Db      *sql.DB = nil
+	Version         = "v1.0.0"
 )
 
 const ConfigDefaultFileName = "config.yaml"

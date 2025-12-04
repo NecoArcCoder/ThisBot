@@ -4,6 +4,7 @@ import (
 	"ThisBot/common"
 	"ThisBot/db1"
 	"ThisBot/utils"
+	"crypto/hmac"
 	"database/sql"
 	"encoding/json"
 	"log"
@@ -99,6 +100,22 @@ func recovery_handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func check_package_legality(guid string, token string, lastseen string,
+	x_time string, x_sign string) bool {
+	// Overtime
+	time1_bot, _ := strconv.ParseInt(x_time, 10, 64)
+	saved_lastseen_server, _ := strconv.ParseInt(lastseen, 10, 64)
+	if time1_bot-saved_lastseen_server >= 60*1000 {
+		return false
+	}
+	// Check sign
+	bytesToken, _ := common.Base64Dec(token)
+	sign := common.HmacSha256(bytesToken, []byte(guid+x_time))
+	bytesSign, _ := common.Base64Dec(x_sign)
+
+	return hmac.Equal(sign, bytesSign)
+}
+
 func poll_handler(w http.ResponseWriter, r *http.Request) {
 	log.Println("poll_handler triggered")
 	guid := r.Header.Get("X-Guid")
@@ -118,21 +135,55 @@ func poll_handler(w http.ResponseWriter, r *http.Request) {
 	reply.Status = 1
 	reply.TaskId = 0
 
-	sqlStr := "select guid, token from clients where guid=?"
+	sqlStr := "select guid, token, lastseen from clients where guid=?"
 	err := db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_guid, &saved_token, &saved_lastseen)
 	if err == sql.ErrNoRows {
 		// Can't find bot
 		log.Println("can't find bot in poll handler" + err.Error())
-
+		reply.Cmd = "register"
+		reply.Status = 0
+		reply.Error = "can't find bot in poll handler"
 	} else if err != nil {
 		log.Println(err.Error())
 		reply.Status = 0
 		reply.Error = "Unknown error"
+		reply.Cmd = "register"
 	} else {
 		// Find it!
-
+		if !check_package_legality(guid, saved_token, saved_lastseen, time1, sign) {
+			reply.Status = 0
+			reply.Error = "Illegal package"
+			reply.Cmd = "poll"
+		} else {
+			sqlStr = "select t.id as task_id, c.command, c.args" +
+				" from tasks t join commands c on t.command_id = c.id" +
+				" where t.guid = ? and t.status = 'queued' order by t.created_at asc limit 1"
+			saved_id := 0
+			saved_command := ""
+			saved_args := ""
+			err = db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_id, &saved_command, &saved_args)
+			if err == sql.ErrNoRows {
+				// No such task
+				reply.Cmd = "poll"
+				reply.Status = 0
+				reply.Error = "can't find task"
+			} else if err != nil {
+				// Error in finding task
+				reply.Status = 0
+				reply.Error = "Unknown error"
+				reply.Cmd = "register"
+			} else {
+				// Find the command of task
+				reply.Cmd = saved_command
+				json.Unmarshal([]byte(saved_args), &reply.Args)
+			}
+		}
 	}
 
+	err = http_sender(w, guid, saved_token, &reply)
+	if err != nil {
+		log.Println(err.Error())
+	}
 }
 
 func logout_handler(w http.ResponseWriter, r *http.Request) {
