@@ -1,5 +1,18 @@
-CREATE DATABASE `thisbot` IF NOT EXISTS ;
-USE `thisbot`;
+/*
+ Navicat Premium Dump SQL
+
+ Source Server         : thisbot
+ Source Server Type    : MySQL
+ Source Server Version : 80043 (8.0.43)
+ Source Host           : localhost:3306
+ Source Schema         : thisbot
+
+ Target Server Type    : MySQL
+ Target Server Version : 80043 (8.0.43)
+ File Encoding         : 65001
+
+ Date: 05/12/2025 18:34:01
+*/
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -16,7 +29,7 @@ CREATE TABLE `accounts`  (
   `created_at` datetime NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE INDEX `username`(`username` ASC) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for clients
@@ -38,7 +51,7 @@ CREATE TABLE `clients`  (
   `lastseen` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   `lastcommand` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 2 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 6 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for commands
@@ -46,13 +59,13 @@ CREATE TABLE `clients`  (
 DROP TABLE IF EXISTS `commands`;
 CREATE TABLE `commands`  (
   `id` int NOT NULL AUTO_INCREMENT,
-  `command` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
-  `args` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
-  `created_by` int NULL DEFAULT NULL,
-  `scope` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
-  `created_at` datetime NULL DEFAULT NULL,
+  `name` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
+  `description` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
+  `arg_schema` json NULL,
+  `needs_admin` tinyint(1) NULL DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT (utc_timestamp()),
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 4 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Table structure for logs
@@ -71,6 +84,18 @@ CREATE TABLE `logs`  (
   INDEX `client_id`(`client_id` ASC) USING BTREE,
   CONSTRAINT `logs_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `logs_ibfk_2` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for task_output
+-- ----------------------------
+DROP TABLE IF EXISTS `task_output`;
+CREATE TABLE `task_output`  (
+  `task_id` int NOT NULL,
+  `output` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
+  `error` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
+  PRIMARY KEY (`task_id`) USING BTREE,
+  CONSTRAINT `task_output_ibfk_1` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
@@ -79,15 +104,18 @@ CREATE TABLE `logs`  (
 DROP TABLE IF EXISTS `tasks`;
 CREATE TABLE `tasks`  (
   `id` int NOT NULL AUTO_INCREMENT,
+  `bot_id` int NULL DEFAULT NULL,
   `command_id` int NULL DEFAULT NULL,
-  `guid` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT NULL,
+  `args` json NULL,
   `status` varchar(16) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL DEFAULT 'queued',
-  `result` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
-  `error` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NULL,
-  `execute_at` datetime NULL DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT (utc_timestamp()),
+  `completed_at` datetime NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE,
-  INDEX `fk_task_command`(`command_id` ASC) USING BTREE,
-  CONSTRAINT `fk_task_command` FOREIGN KEY (`command_id`) REFERENCES `commands` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+  INDEX `fk_tasks_clients`(`bot_id` ASC) USING BTREE,
+  INDEX `fk_tasks_commands`(`command_id` ASC) USING BTREE,
+  CONSTRAINT `fk_task_command` FOREIGN KEY (`command_id`) REFERENCES `commands` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_tasks_clients` FOREIGN KEY (`bot_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_tasks_commands` FOREIGN KEY (`command_id`) REFERENCES `commands` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE = InnoDB AUTO_INCREMENT = 3 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 SET FOREIGN_KEY_CHECKS = 1;

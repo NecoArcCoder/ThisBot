@@ -2,6 +2,7 @@ package db1
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -53,4 +54,24 @@ func Exec(db *sql.DB, query string, args ...any) (int64, error) {
 		return 0, err
 	}
 	return res.RowsAffected()
+}
+
+func InitCommands(db *sql.DB) {
+	args := map[string]interface{}{
+		"hidden": "string",
+		"args":   "string",
+	}
+	byt, _ := json.Marshal(args)
+	// Remote execute
+	sqlStr := "insert into commands(name, description, arg_schema, needs_admin) values (?,?,?,?)"
+	Insert(db, sqlStr, "execute", "Remote download executing, it could run local files or "+
+		"download from remote host and execute", byt, 0)
+	// Remote shell
+	args1 := map[string]interface{}{
+		"type": "string",
+	}
+	byt, _ = json.Marshal(args1)
+	Insert(db, sqlStr, "shell", "Remote commandline shell, cmd or powershell", byt, 0)
+	// List bot latest information
+	Insert(db, sqlStr, "info", "Request bot latest information", nil, 0)
 }

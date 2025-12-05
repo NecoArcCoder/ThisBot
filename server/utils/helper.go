@@ -3,6 +3,9 @@ package utils
 import (
 	"ThisBot/common"
 	"crypto/rand"
+	"encoding/json"
+	"io"
+	"net/http"
 	"strconv"
 	"time"
 )
@@ -37,4 +40,14 @@ func GenerateRandomBytes(length int) []byte {
 		return nil
 	}
 	return b
+}
+
+func ReadJson(r *http.Request, out any) error {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	r.Body.Close()
+
+	return json.Unmarshal(body, out)
 }

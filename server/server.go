@@ -7,7 +7,6 @@ import (
 	"crypto/hmac"
 	"database/sql"
 	"encoding/json"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -51,9 +50,8 @@ func recovery_handler(w http.ResponseWriter, r *http.Request) {
 	guid := r.Header.Get("X-Guid")
 	time1 := r.Header.Get("X-Time")
 	// Read bot info
-	botinfo, _ := io.ReadAll(r.Body)
 	var bot common.Client
-	json.Unmarshal(botinfo, &bot)
+	utils.ReadJson(r, &bot)
 
 	reply := common.ServerReply{
 		Args: make(map[string]any),
@@ -160,6 +158,7 @@ func poll_handler(w http.ResponseWriter, r *http.Request) {
 			reply.Error = "Illegal package"
 			reply.Cmd = "poll"
 		} else {
+			// TODO FIX BUG
 			sqlStr = "select t.id as task_id, c.command, c.args" +
 				" from tasks t join commands c on t.command_id = c.id" +
 				" where t.guid = ? and t.status = 'queued' order by t.created_at asc limit 1"

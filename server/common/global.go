@@ -7,10 +7,12 @@ import (
 )
 
 var (
-	Seed            = rand.New(rand.NewSource(time.Now().UnixNano()))
-	Cfg             = Config{}
-	Db      *sql.DB = nil
-	Version         = "v1.0.0"
+	Seed               = rand.New(rand.NewSource(time.Now().UnixNano()))
+	Cfg                = Config{}
+	Db         *sql.DB = nil
+	Version            = "v1.1.0"
+	Account            = ""
+	CurrentBot int64   = 5
 )
 
 const ConfigDefaultFileName = "config.yaml"
@@ -38,12 +40,6 @@ type Config struct {
 	} `yaml:"auth"`
 }
 
-// type Account struct {
-// 	Id       int
-// 	Username string
-// 	Password string
-// }
-
 type Client struct {
 	Id          int    `json:"id"`
 	Guid        string `json:"guid"`
@@ -60,25 +56,6 @@ type Client struct {
 	Lastseen    string `json:"lastseen"`
 	Lastcommand string `json:"lastcommand"`
 }
-
-// type Command struct {
-// 	Id          int
-// 	Command     string
-// 	Timeanddate string
-// }
-
-// type Lastlogin struct {
-// 	Id          int
-// 	Timeanddate string
-// }
-
-// type Tasks struct {
-// 	Id      int
-// 	Name    string
-// 	Guid    string
-// 	Command string
-// 	Method  string
-// }
 
 type ServerReply struct {
 	Status  int               `json:"status"`
