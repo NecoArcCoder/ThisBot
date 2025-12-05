@@ -45,20 +45,20 @@ type Config struct {
 // }
 
 type Client struct {
-	Id          int
-	Guid        string
-	Token       string
-	Ip          string
-	Whoami      string
-	Os          string
-	Installdate string
-	Isadmin     string
-	Antivirus   string
-	Cpuinfo     string
-	Gpuinfo     string
-	Version     string
-	Lastseen    string
-	Lastcommand string
+	Id          int    `json:"id"`
+	Guid        string `json:"guid"`
+	Token       string `json:"token"`
+	Ip          string `json:"ip"`
+	Whoami      string `json:"whoami"`
+	Os          string `json:"os"`
+	Installdate string `json:"installdate"`
+	Isadmin     string `json:"isadmin"`
+	Antivirus   string `json:"antivirus"`
+	Cpuinfo     string `json:"cpuinfo"`
+	Gpuinfo     string `json:"gpuinfo"`
+	Version     string `json:"version"`
+	Lastseen    string `json:"lastseen"`
+	Lastcommand string `json:"lastcommand"`
 }
 
 // type Command struct {

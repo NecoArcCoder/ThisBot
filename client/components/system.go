@@ -1,28 +1,42 @@
 package components
 
 import (
-	"bytes"
 	"log"
+	"runtime"
 	"strings"
 	"syscall"
 	"unsafe"
 
 	"github.com/StackExchange/wmi"
+	"github.com/shirou/gopsutil/v4/process"
 	"golang.org/x/sys/windows/registry"
 )
 
 func find_process_by_name(name string) bool {
-	var dst []Win32_Process
+	lower_av_name := strings.ToLower(name)
 
-	q := wmi.CreateQuery(&dst, "")
-	err := wmi.Query(q, &dst)
-	if err != nil {
-		log.Fatal(err)
-		return false
-	}
-	for _, v := range dst {
-		if bytes.Contains([]byte(v.Name), []byte(name)) {
-			return true
+	if runtime.GOOS == "windows" {
+		var dst []Win32_Process
+
+		q := wmi.CreateQuery(&dst, "")
+		err := wmi.Query(q, &dst)
+		if err != nil {
+			log.Fatal(err)
+			return false
+		}
+		for _, v := range dst {
+			if strings.Contains(lower_av_name, strings.ToLower(v.Name)) {
+				return true
+			}
+		}
+	} else {
+		procs, _ := process.Processes()
+		for _, p := range procs {
+			name, _ := p.Name()
+			name = strings.ToLower(name)
+			if strings.Contains(lower_av_name, name) {
+				return true
+			}
 		}
 	}
 	return false
