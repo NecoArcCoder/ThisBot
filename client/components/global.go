@@ -73,7 +73,7 @@ var (
 	pfnGetCurrentProcess   = kernel32.NewProc("GetCurrentProcess")
 
 	botcore = BotCore{
-		version:      "1.2.0",
+		version:      "1.2.1",
 		hosts:        []string{"127.0.0.1:8080"},
 		singleton:    true,
 		anti_debug:   false,
@@ -131,6 +131,15 @@ type ServerReply struct {
 	Args    map[string]any    `json:"args"`
 	Error   string            `json:"error"`
 	Headers map[string]string `json:"-"`
+}
+
+type Report struct {
+	Guid    string         `json:"guid"`
+	TaskID  string         `json:"task_id"`
+	Success bool           `json:"success"`
+	Output  string         `json:"output"`
+	Error   string         `json:"error"`
+	Extra   map[string]any `json:"extra"`
 }
 
 type Client struct {

