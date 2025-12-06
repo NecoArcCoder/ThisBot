@@ -11,8 +11,8 @@ var (
 	Seed               = rand.New(rand.NewSource(time.Now().UnixNano()))
 	Cfg                = Config{}
 	Db         *sql.DB = nil
-	Version            = "v1.2.1"
-	Account            = ""
+	Version            = "v1.3.2"
+	Account            = 0
 	CurrentBot int64   = 5
 	Mutex      sync.Mutex
 )
@@ -40,6 +40,15 @@ type Config struct {
 	Auth struct {
 		JWTSecret string `yaml:"jwt_secret"`
 	} `yaml:"auth"`
+}
+
+type Report struct {
+	Guid    string         `json:"guid"`
+	TaskID  string         `json:"task_id"`
+	Success bool           `json:"success"`
+	Output  string         `json:"output"`
+	Error   string         `json:"error"`
+	Extra   map[string]any `json:"extra"`
 }
 
 type Client struct {

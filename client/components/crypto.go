@@ -29,3 +29,10 @@ func hmac_sha256(key, data []byte) []byte {
 	mac.Write(data)
 	return mac.Sum(nil)
 }
+
+// Create sha256-based HMAC
+func create_sign(token string, guid string, timestamp string) []byte {
+	bytToken, _ := base64_dec(token)
+	data := []byte(guid + timestamp)
+	return hmac_sha256(bytToken, data)
+}

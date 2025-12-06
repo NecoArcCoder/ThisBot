@@ -211,22 +211,78 @@ func login_handler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func run_handler(w http.ResponseWriter, r *http.Request) {
-	log.Println("run_handler triggered")
+func report_handler(w http.ResponseWriter, r *http.Request) {
+	log.Println("report_handler triggered")
 
+	guid := r.Header.Get("X-Guid")
+	time1 := r.Header.Get("X-Time")
+	sign := r.Header.Get("X-Sign")
+
+	// Check if the bot exists
+	saved_token := ""
+	saved_id := 0
+	saved_ip := ""
+	sqlStr := "select id, token, ip from clients where guid=?"
+	err := db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_id, &saved_token, &saved_ip)
+	if err == sql.ErrNoRows {
+		fmt.Println("[-] Can't find bot in report hander")
+		return
+	} else if err != nil {
+		fmt.Println("[-] Unknown error")
+		return
+	}
+	// Check legality of the package
+	if !check_package_legality(guid, saved_token, sign, time1) {
+		fmt.Println("[-] Illegal package")
+		return
+	}
+
+	// Parse the report
+	var report common.Report
+	err = json.NewDecoder(r.Body).Decode(&report)
+	if err != nil {
+		fmt.Println("[-] Failed to read the report")
+		return
+	}
+	defer r.Body.Close()
+	// Find the task and update it's status
+	status := "done"
+	if !report.Success {
+		status = "failed"
+	}
+	int64_time, _ := strconv.ParseInt(time1, 10, 64)
+	t := time.UnixMilli(int64_time)
+
+	sqlStr = "update tasks set status='" + status + "',completed_at='" + t.Format("2006-01-02 15:04:05") + "' where id=?"
+	_, err = db1.Exec(common.Db, sqlStr, report.TaskID)
+	if err != nil {
+		log.Printf("[-] Failed to update task[%s] status\n", report.TaskID)
+		return
+	}
+
+	// Add log to database
+	action := report.Extra["action"].(string)
+	sqlStr = "insert into logs(account_id, action, client_id, message, status, ip, task_id) values(?,?,?,?,?,?,?)"
+	saved_task_id_int, _ := strconv.ParseInt(report.TaskID, 10, 64)
+	_, err = db1.Insert(common.Db, sqlStr, common.Account, action, saved_id, report.Output, report.Error, saved_ip, saved_task_id_int)
+	if err != nil {
+		log.Printf("[-] Failed to add task[%s] log\n", report.TaskID)
+		return
+	}
+	fmt.Println("[+] New task log generated")
 }
 
 func Server() {
 	router := chi.NewRouter()
 
-	router.Use(middleware.Logger)
+	// router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
 
 	router.Post("/recovery", recovery_handler)
 	router.Post("/poll", poll_handler)
 	router.Post("/login", login_handler)
 	router.Post("/logout", logout_handler)
-	router.Post("/run", run_handler)
+	router.Post("/report", report_handler)
 
 	strPort := strconv.Itoa(common.Cfg.Server.Port)
 	log.Println("[+] Server running on " + common.Cfg.Server.Host + ":" + strPort)

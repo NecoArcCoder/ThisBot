@@ -9,7 +9,7 @@ database:
   name: thisbot
 log:
   enabled: true
-  output: stdout
+  output: file
   filepath: ./Log/config.yaml
   level: info
 auth:

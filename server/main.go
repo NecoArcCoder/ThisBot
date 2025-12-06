@@ -34,6 +34,7 @@ func show_banner() {
 
 func show_bot_info(bot *common.Client) {
 	common.Mutex.Lock()
+	defer common.Mutex.Unlock()
 	fmt.Println("🐾 --------------------------------------------------- 🐾")
 	fmt.Println("⚔️ ⚔️ ⚔️  Currrent bot: ")
 	fmt.Println("🐾 --------------------------------------------------- 🐾")
@@ -58,7 +59,6 @@ func show_bot_info(bot *common.Client) {
 	fmt.Println("🔬 Lastseen: " + t.Format("2006-01-02 15:04:05"))
 	fmt.Println("👾 Version: v" + bot.Version)
 	fmt.Println("🐾 --------------------------------------------------- 🐾")
-	common.Mutex.Unlock()
 }
 
 func help_handler() {
@@ -70,6 +70,41 @@ func help_handler() {
 	fmt.Println("6. select botid: Select a connected bot to operate")
 	fmt.Println("7. clear: Clean the screen")
 	fmt.Println("8. mode [broadcast]: Show current mode or switch to broadcast")
+	fmt.Println("9. log [list/del/export]: log operations, only support list option now, it will show all task logs")
+	fmt.Println("10. cancel [task_id/all]: if option is all means cancel all tasks, or just task specfied by taskid")
+}
+
+// TODO
+func cancel_handler(ary []string) {
+	if len(ary) < 2 {
+		fmt.Println("[-] Usage: cancel [task_id/all], please enter help command")
+		return
+	}
+	option := strings.TrimSpace(strings.ToLower(ary[1]))
+	sqlStr := "update tasks set status='canceled' where id=? and bot_id=? and (instr(status, 'queued') or instr(status, 'running'))"
+	if option == "all" {
+		sqlStr = "update tasks t join logs l on l.task_id = t.id set t.status='canceled' " +
+			"where l.account_id=? and (instr(t.status, 'queued') or instr(t.status, 'running'))"
+		_, err := db1.Exec(common.Db, sqlStr)
+		if err != nil {
+			fmt.Println("[-] Failed to cancel all tasks")
+		} else {
+			fmt.Println("[+] Cancel all tasks successfully")
+			// Update all status in logs
+			sqlStr = "update logs set status='canceled' where account_id=? and (instr(status, 'queued') or instr(status, 'running'))"
+		}
+	} else {
+		task_id, _ := strconv.ParseInt(option, 10, 64)
+		rows, err := db1.Exec(common.Db, sqlStr, task_id, common.Account)
+		if err != nil {
+			fmt.Printf("[-] Failed to cancel task[%d]\n", task_id)
+		} else if rows == 0 {
+			fmt.Printf("[-] Task[%d] already done\n", task_id)
+		} else {
+			fmt.Printf("[+] Cancel task[%d] successfully\n", task_id)
+
+		}
+	}
 }
 
 func select_handler(ary []string) {
@@ -196,6 +231,86 @@ func mode_handler(ary []string) {
 	}
 }
 
+func del_log() {
+
+}
+
+func export_logs() {
+
+}
+
+func list_logs() {
+	common.Mutex.Lock()
+	defer common.Mutex.Unlock()
+
+	sqlStr := `SELECT l.id, 
+					l.action, 
+					l.message, 
+					l.created_at, 
+					l.ip, 
+					c.guid, 
+					c.clientversion, 
+					t.status
+				FROM logs AS l
+				JOIN clients AS c ON l.client_id = c.id
+				JOIN tasks AS t ON l.task_id = t.id
+				WHERE l.account_id = ?
+				ORDER BY l.created_at DESC`
+
+	res, err := db1.QueryRows(common.Db, sqlStr, common.Account)
+	if err != nil {
+		fmt.Println("[-] Failed to list logs")
+		return
+	}
+	defer res.Close()
+
+	saved_id := 0
+	saved_action := ""
+	saved_msg := ""
+	saved_created_at := ""
+	saved_ip := ""
+	saved_guid := ""
+	saved_clientversion := ""
+	saved_status := ""
+
+	fmt.Println("🐾 🐾 🐾 Logs list: ")
+	for res.Next() {
+		err = res.Scan(&saved_id, &saved_action, &saved_msg, &saved_created_at,
+			&saved_ip, &saved_guid, &saved_clientversion, &saved_status)
+		if err != nil {
+			continue
+		}
+		saved_msg = strings.TrimSpace(saved_msg)
+		if saved_msg == "" {
+			saved_msg = "NaN"
+		}
+
+		fmt.Println("🐾 --------------------------------------------------- 🐾")
+		fmt.Println("✅ ID: " + strconv.FormatInt(int64(saved_id), 10))
+		fmt.Println("🔰 Guid:" + saved_guid)
+		fmt.Println("🌍 IP: " + saved_ip)
+		fmt.Println("⛏️ Action: " + saved_action)
+		fmt.Println("💭 Message: " + saved_msg)
+		fmt.Println("🌀 Status: " + saved_status)
+	}
+}
+
+func log_handler(ary []string) {
+	if len(ary) < 2 {
+		fmt.Println("[-] Usage: log [list/del/export], please enter help command")
+		return
+	}
+
+	switch ary[1] {
+	case "list", "l":
+		list_logs()
+	case "del", "d":
+		del_log()
+	case "export", "r":
+		export_logs()
+	}
+}
+
 func list_handler() {
 	sqlStr := "select id from clients"
 	var bot common.Client
@@ -272,6 +387,9 @@ func main() {
 	time.Sleep(1000)
 
 	// Running command panel
+	// Default user is login and account id is 1
+	common.Account = 1
+
 	var command string = ""
 	show_banner()
 	for {
@@ -290,6 +408,10 @@ func main() {
 			list_handler()
 		case "help", "h":
 			help_handler()
+		case "cancel", "c":
+			cancel_handler(cmdAry)
+		case "log":
+			log_handler(cmdAry)
 		case "exec":
 			exec_handler(cmdAry)
 		case "clear":

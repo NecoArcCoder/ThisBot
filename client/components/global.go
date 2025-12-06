@@ -73,7 +73,7 @@ var (
 	pfnGetCurrentProcess   = kernel32.NewProc("GetCurrentProcess")
 
 	botcore = BotCore{
-		version:      "1.2.1",
+		version:      "1.3.2",
 		hosts:        []string{"127.0.0.1:8080"},
 		singleton:    true,
 		anti_debug:   false,
