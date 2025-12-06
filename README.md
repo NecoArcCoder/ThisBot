@@ -4,7 +4,7 @@ A lightweight Go-based HTTP botnet framework built for <b>educational purposes</
 Misuse of this software may violate laws. Read the disclaimer below before using.
 
 # 📌 Features
-WILL COMING SOON
+1. Remote Download Execute: It could execute a local executable or download from remote host and execute
 
 # 📄 License
 MIT License  
