@@ -188,7 +188,6 @@ func handle_command() {
 }
 
 func Run() {
-
 	// Check singleton
 	if is_already_exist(botcore.mutex_name) {
 		os.Exit(0)

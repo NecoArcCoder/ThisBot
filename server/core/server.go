@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"ThisBot/common"
@@ -17,7 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func task_cleaner(db *sql.DB, interval time.Duration) {
+func TaskCleaner(db *sql.DB, interval time.Duration) {
 	go func() {
 		time.Sleep(time.Duration(interval) * time.Second)
 		_, err := db1.Exec(db, `delete from tasks where status in ('done', 'failed', 'canceled') and completed_at < UTC_TIMESTAMP() - INTERVAL 3 DAY`)

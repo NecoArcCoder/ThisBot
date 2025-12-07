@@ -2,9 +2,12 @@ package common
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+
+	"golang.org/x/crypto/chacha20"
 )
 
 // Base64 encryption
@@ -28,4 +31,35 @@ func HmacSha256(key, data []byte) []byte {
 	mac := hmac.New(sha256.New, key)
 	mac.Write(data)
 	return mac.Sum(nil)
+}
+
+func EncChacha20(key, plain []byte) []byte {
+	nonce := make([]byte, chacha20.NonceSize)
+	_, err := rand.Read(nonce)
+	if err != nil {
+		return nil
+	}
+	cipher, err := chacha20.NewUnauthenticatedCipher(key, nonce)
+	if err != nil {
+		return nil
+	}
+
+	cipher_text := make([]byte, len(plain))
+	cipher.XORKeyStream(cipher_text, plain)
+
+	return append(nonce, cipher_text...)
+}
+
+func DecChacha20(key, nonceCipher []byte) []byte {
+	nonce := nonceCipher[:chacha20.NonceSize]
+	text := nonceCipher[chacha20.NonceSize:]
+
+	cipher, err := chacha20.NewUnauthenticatedCipher(key, nonce)
+	if err != nil {
+		return nil
+	}
+	plain := make([]byte, len(text))
+
+	cipher.XORKeyStream(plain, text)
+	return plain
 }
