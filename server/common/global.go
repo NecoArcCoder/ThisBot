@@ -11,7 +11,7 @@ var (
 	Seed               = rand.New(rand.NewSource(time.Now().UnixNano()))
 	Cfg                = Config{}
 	Db         *sql.DB = nil
-	Version            = "v1.3.2"
+	Version            = "v1.4.3"
 	Account            = 0
 	CurrentBot int64   = 5
 	Mutex      sync.Mutex

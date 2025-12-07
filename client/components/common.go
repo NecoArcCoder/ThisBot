@@ -21,6 +21,18 @@ func random_int(min int, max int) int {
 	return min + (g_seed.Int() % (max - min))
 }
 
+func random_ip() string {
+	return fmt.Sprintf("%d.%d.%d.%d", random_int(0, 256), random_int(0, 256), random_int(0, 256), random_int(0, 256))
+}
+
+func random_bytes(length int) []byte {
+	result := make([]byte, length)
+	for i := 0; i < length; i++ {
+		result[i] = byte(random_int(0, 256))
+	}
+	return result
+}
+
 func generate_guid() string {
 	p1 := random_string(8)
 	p2 := random_string(4)

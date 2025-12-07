@@ -7,6 +7,7 @@ import (
 	"ThisBot/utils"
 	"bufio"
 	"database/sql"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -70,39 +71,53 @@ func help_handler() {
 	fmt.Println("6. select botid: Select a connected bot to operate")
 	fmt.Println("7. clear: Clean the screen")
 	fmt.Println("8. mode [broadcast]: Show current mode or switch to broadcast")
-	fmt.Println("9. log [list/del/export]: log operations, only support list option now, it will show all task logs")
+	fmt.Println("9. log command: \n  log list: it will show all task logs\n  log del [all/n]: it will delete all records or specific one\n  log export [filename]: If only use 'log export' will generate a .csv file with a timestamp name, or you can specify your own.")
 	fmt.Println("10. cancel [task_id/all]: if option is all means cancel all tasks, or just task specfied by taskid")
 }
 
-// TODO
 func cancel_handler(ary []string) {
 	if len(ary) < 2 {
 		fmt.Println("[-] Usage: cancel [task_id/all], please enter help command")
 		return
 	}
 	option := strings.TrimSpace(strings.ToLower(ary[1]))
-	sqlStr := "update tasks set status='canceled' where id=? and bot_id=? and (instr(status, 'queued') or instr(status, 'running'))"
+
 	if option == "all" {
-		sqlStr = "update tasks t join logs l on l.task_id = t.id set t.status='canceled' " +
+		sqlStr := "update tasks t join logs l on l.task_id = t.id set t.status='canceled' " +
 			"where l.account_id=? and (instr(t.status, 'queued') or instr(t.status, 'running'))"
-		_, err := db1.Exec(common.Db, sqlStr)
+		rows, err := db1.Exec(common.Db, sqlStr, common.Account)
 		if err != nil {
 			fmt.Println("[-] Failed to cancel all tasks")
+		} else if rows == 0 {
+			fmt.Println("[-] No task needs to be canceled")
 		} else {
-			fmt.Println("[+] Cancel all tasks successfully")
 			// Update all status in logs
 			sqlStr = "update logs set status='canceled' where account_id=? and (instr(status, 'queued') or instr(status, 'running'))"
+			_, err := db1.Exec(common.Db, sqlStr, common.Account)
+			if err != nil {
+				fmt.Println("[+] Cancel all tasks successfully but failed to update task logs")
+				return
+			}
+			fmt.Println("[+] Cancel all tasks successfully")
 		}
 	} else {
+		sqlStr := "update tasks t join logs l on l.task_id=t.id set t.status='canceled' " +
+			"where l.account_id=? and l.task_id=? and (instr(t.status, 'queued') or instr(t.status, 'running'))"
 		task_id, _ := strconv.ParseInt(option, 10, 64)
-		rows, err := db1.Exec(common.Db, sqlStr, task_id, common.Account)
+		rows, err := db1.Exec(common.Db, sqlStr, common.Account, task_id)
 		if err != nil {
 			fmt.Printf("[-] Failed to cancel task[%d]\n", task_id)
 		} else if rows == 0 {
 			fmt.Printf("[-] Task[%d] already done\n", task_id)
 		} else {
+			// Update logs table
+			sqlStr = "update logs set status='canceled' where account_id=? and task_id=? or (instr(status, 'queued') or instr(status, 'running'))"
+			_, err := db1.Exec(common.Db, sqlStr, common.Account, task_id)
+			if err != nil {
+				fmt.Printf("[+] Cancel task[%d] successfully but failed to update task log\n", task_id)
+				return
+			}
 			fmt.Printf("[+] Cancel task[%d] successfully\n", task_id)
-
 		}
 	}
 }
@@ -231,12 +246,108 @@ func mode_handler(ary []string) {
 	}
 }
 
-func del_log() {
+func del_log(ary []string) {
+	if len(ary) < 3 {
+		fmt.Println("[-] Usage: log del [log_id/all], please enter right command")
+		return
+	}
 
+	if ary[2] == "all" {
+		sqlStr := "truncate table logs"
+		_, err := db1.Exec(common.Db, sqlStr)
+		if err != nil {
+			fmt.Println("[-] Failed to delete logs")
+			return
+		}
+		fmt.Println("[+] Delete logs successfully")
+		return
+	}
+
+	id, err := strconv.ParseInt(ary[2], 10, 64)
+	if err != nil {
+		fmt.Println("[-] Please enter right task ID")
+		return
+	}
+	sqlStr := "delete from logs where id=?"
+	row, err := db1.Exec(common.Db, sqlStr, id)
+	if err != nil {
+		fmt.Printf("[-] Failed to delete log[%d]\n", id)
+		return
+	} else if row == 0 {
+		fmt.Printf("[-] log[%d] doesn't exist\n", id)
+		return
+	}
+
+	fmt.Printf("[+] log[%d] deleted okay\n", id)
 }
 
-func export_logs() {
+func export_logs(ary []string) {
+	sqlStr := "select id,account_id,task_id,client_id,action,message,status,created_at,ip from logs"
+	rows, err := db1.QueryRows(common.Db, sqlStr)
+	if err != nil {
+		fmt.Println("[-] Error in exporting logs")
+		return
+	}
 
+	// Create saving file
+	fmtTime := ""
+	if len(ary) < 3 {
+		timestamp := utils.GenerateUtcTimestamp()
+		t := time.UnixMilli(timestamp)
+		fmtTime = t.Format("2006_01_02_15_04_05")
+		fmtTime += "_logs.csv"
+	} else {
+		fmtTime = ary[2]
+	}
+
+	file, err := os.Create(fmtTime)
+	if err != nil {
+		fmt.Println("[-] Error in exporting logs")
+		return
+	}
+	defer file.Close()
+
+	// Create CVS writter
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// Write headers to csv file
+	err = writer.Write([]string{"ID", "AccountID", "TaskID", "BotID", "Action", "Message", "Status", "Create Time", "IP"})
+	if err != nil {
+		fmt.Println("[-] Error in exporting logs")
+		return
+	}
+	saved_id := 0
+	saved_account_id := 0
+	saved_task_id := 0
+	saved_bot_id := 0
+	saved_action := ""
+	saved_message := ""
+	saved_status := ""
+	saved_created_time := ""
+	saved_ip := ""
+
+	for rows.Next() {
+		err = rows.Scan(&saved_id, &saved_account_id, &saved_task_id,
+			&saved_bot_id, &saved_action,
+			&saved_message, &saved_status, &saved_created_time, &saved_ip)
+		if err != nil {
+			continue
+		}
+		record := []string{fmt.Sprintf("%d", saved_id),
+			fmt.Sprintf("%d", saved_account_id),
+			fmt.Sprintf("%d", saved_task_id),
+			fmt.Sprintf("%d", saved_bot_id),
+			saved_action, saved_message, saved_status,
+			saved_created_time, saved_ip,
+		}
+		err := writer.Write(record)
+		if err != nil {
+			continue
+		}
+	}
+
+	fmt.Println("[+] Export to " + fmtTime)
 }
 
 func list_logs() {
@@ -305,9 +416,9 @@ func log_handler(ary []string) {
 	case "list", "l":
 		list_logs()
 	case "del", "d":
-		del_log()
+		del_log(ary)
 	case "export", "r":
-		export_logs()
+		export_logs(ary)
 	}
 }
 
