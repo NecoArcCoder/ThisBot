@@ -95,7 +95,7 @@ func find_pid_by_name(name string) uint32 {
 	return 0
 }
 
-func reg_read_key(key registry.Key, subPath string, value string, fInt bool) any {
+func reg_read_key(key registry.Key, subPath string, value string, keyType int) any {
 
 	key1 := reg_create_key(key, subPath)
 	if key1 == 0 {
@@ -104,10 +104,12 @@ func reg_read_key(key registry.Key, subPath string, value string, fInt bool) any
 	defer key1.Close()
 	var data any
 
-	if fInt {
+	if keyType == 0 {
 		data, _, _ = key1.GetIntegerValue(value)
-	} else {
+	} else if keyType == 1 {
 		data, _, _ = key1.GetStringValue(value)
+	} else if keyType == 2 {
+		data, _, _ = key1.GetBinaryValue(value)
 	}
 
 	return data

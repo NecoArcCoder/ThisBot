@@ -2,9 +2,11 @@ package components
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"golang.org/x/crypto/chacha20"
 )
 
 // Base64 encryption
@@ -35,4 +37,36 @@ func create_sign(token string, guid string, timestamp string) []byte {
 	bytToken, _ := base64_dec(token)
 	data := []byte(guid + timestamp)
 	return hmac_sha256(bytToken, data)
+}
+
+func enc_chacha20(key, plain []byte) []byte {
+
+	nonce := make([]byte, chacha20.NonceSize)
+	_, err := rand.Read(nonce)
+	if err != nil {
+		return nil
+	}
+	cipher, err := chacha20.NewUnauthenticatedCipher(key, nonce)
+	if err != nil {
+		return nil
+	}
+
+	cipher_text := make([]byte, len(plain))
+	cipher.XORKeyStream(cipher_text, plain)
+
+	return append(nonce, cipher_text...)
+}
+
+func dec_chacha20(key, nonceCipher []byte) []byte {
+	nonce := nonceCipher[:chacha20.NonceSize]
+	text := nonceCipher[chacha20.NonceSize:]
+
+	cipher, err := chacha20.NewUnauthenticatedCipher(key, nonce)
+	if err != nil {
+		return nil
+	}
+	plain := make([]byte, len(text))
+
+	cipher.XORKeyStream(plain, text)
+	return plain
 }

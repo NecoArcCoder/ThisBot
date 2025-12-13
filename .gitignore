@@ -8,4 +8,9 @@
 /pic/
 /server/*.exe
 /server/Log/
+/server/payload.yaml
+/server/config.yaml
 /features.md
+/.idea/
+/client/.idea/
+/server/.idea/

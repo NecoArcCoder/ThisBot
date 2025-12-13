@@ -689,7 +689,7 @@ func get_bot_info() []byte {
 	}
 
 	if len(g_installdate) == 0 {
-		result := reg_read_key(registry.CURRENT_USER, g_regpath, "installdate", false)
+		result := reg_read_key(registry.CURRENT_USER, g_regpath, "installdate", 1)
 		if result == nil {
 			g_installdate = generate_utc_timestamp_string()
 		} else {

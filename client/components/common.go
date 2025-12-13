@@ -2,6 +2,8 @@ package components
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -48,4 +50,37 @@ func generate_utc_timestamp() int64 {
 
 func generate_utc_timestamp_string() string {
 	return strconv.FormatInt(generate_utc_timestamp(), 10)
+}
+
+func get_module_file() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	exe, err = filepath.EvalSymlinks(exe)
+	if err != nil {
+		return ""
+	}
+	return exe
+}
+
+func int_to_bytes(n int) []byte {
+	bytes := []byte{
+		byte(n & 0xff),
+		byte((n >> 8) & 0xff),
+		byte((n >> 16) & 0xff),
+		byte((n >> 24) & 0xff),
+	}
+	return bytes
+}
+
+func bytes_to_int(b []byte) int {
+	var result int = 0
+
+	result |= int(b[0])
+	result |= int(b[1]) << 8
+	result |= int(b[2]) << 16
+	result |= int(b[3]) << 24
+
+	return result
 }

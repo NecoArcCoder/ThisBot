@@ -48,7 +48,9 @@ func main() {
 	}
 
 	// Running the task cleaner
-	core.TaskCleaner(common.Db, 5*60)
+	core.TaskCleaner(common.Db, time.Duration(common.TaskCleanerIntervalSec)*time.Second)
+	// Running the bot cleaner
+	core.DeadBotCleaner(common.Db)
 	// Running the server
 	go core.Server()
 

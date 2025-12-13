@@ -93,3 +93,9 @@ func BytesToInt(b []byte) int {
 
 	return result
 }
+
+func TimestampStringToMySqlDateTime(timestamp string) string {
+	unixTimestamp, _ := strconv.ParseInt(timestamp, 10, 64)
+	utcTime := time.UnixMilli(unixTimestamp).UTC()
+	return utcTime.Format("2006-01-02 15:04:05")
+}
