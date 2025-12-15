@@ -3,6 +3,8 @@ package utils
 import (
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 // Check if a file is exist or not
@@ -47,4 +49,12 @@ func ReadBinary(path string) ([]byte, error) {
 		}
 	}
 	return buf, nil
+}
+
+func IsSameSuffix(path string, suffix string) bool {
+	ext := filepath.Ext(path)
+	if strings.EqualFold(ext, "."+suffix) {
+		return true
+	}
+	return false
 }

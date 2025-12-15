@@ -24,7 +24,7 @@ func show_banner() {
 		`  |    |   |   Y  \  |\___ \ |    |   (  <_> )  |  ` + "\n" +
 		`  |____|   |___|  /__/____  >|______  /\____/|__|  ` + "\n" +
 		`  	        \/        \/        \/             ` + common.Version + "\n" +
-		"                                                   Author: Nec0Arc" + "\n"
+		"                                               Author: Nec0Arc" + "\n"
 	fmt.Println(banner)
 }
 
@@ -61,11 +61,14 @@ func help_handler() {
 	fmt.Println("8. mode [broadcast]: Show current mode or switch to broadcast")
 	fmt.Println("9. log command: \n  log list: it will show all task logs\n  log del [all/n]: it will delete all records or specific one\n  log export [filename]: If only use 'log export' will generate a .csv file with a timestamp name, or you can specify your own.")
 	fmt.Println("10. cancel [task_id/all]: if option is all means cancel all tasks, or just task specfied by taskid")
+	fmt.Println("11. task: task [list/export]: \n  task list: it will show all tasks\n  task export [*.csv]: if no specific name then generate a timestamp name, or use your specific name.")
+	fmt.Println("12. exit: Exit server")
+
 }
 
 func cancel_handler(ary []string) {
 	if len(ary) < 2 {
-		fmt.Println("[-] Usage: cancel [task_id/all], please enter help command")
+		fmt.Println("[💀] Usage: cancel [task_id/all], please enter help command")
 		return
 	}
 	option := strings.TrimSpace(strings.ToLower(ary[1]))
@@ -75,18 +78,18 @@ func cancel_handler(ary []string) {
 			"where l.account_id=? and (instr(t.status, 'queued') or instr(t.status, 'running'))"
 		rows, err := db1.Exec(common.Db, sqlStr, common.Account)
 		if err != nil {
-			fmt.Println("[-] Failed to cancel all tasks")
+			fmt.Println("[💀] Failed to cancel all tasks")
 		} else if rows == 0 {
-			fmt.Println("[-] No task needs to be canceled")
+			fmt.Println("[💀] No task needs to be canceled")
 		} else {
 			// Update all status in logs
 			sqlStr = "update logs set status='canceled' where account_id=? and (instr(status, 'queued') or instr(status, 'running'))"
 			_, err := db1.Exec(common.Db, sqlStr, common.Account)
 			if err != nil {
-				fmt.Println("[+] Cancel all tasks successfully but failed to update task logs")
+				fmt.Println("[✅] Cancel all tasks successfully but failed to update task logs")
 				return
 			}
-			fmt.Println("[+] Cancel all tasks successfully")
+			fmt.Println("[✅] Cancel all tasks successfully")
 		}
 	} else {
 		sqlStr := "update tasks t join logs l on l.task_id=t.id set t.status='canceled' " +
@@ -94,37 +97,37 @@ func cancel_handler(ary []string) {
 		task_id, _ := strconv.ParseInt(option, 10, 64)
 		rows, err := db1.Exec(common.Db, sqlStr, common.Account, task_id)
 		if err != nil {
-			fmt.Printf("[-] Failed to cancel task[%d]\n", task_id)
+			fmt.Printf("[💀] Failed to cancel task[%d]\n", task_id)
 		} else if rows == 0 {
-			fmt.Printf("[-] Task[%d] already done\n", task_id)
+			fmt.Printf("[💀] Task[%d] already done\n", task_id)
 		} else {
 			// Update logs table
 			sqlStr = "update logs set status='canceled' where account_id=? and task_id=? or (instr(status, 'queued') or instr(status, 'running'))"
 			_, err := db1.Exec(common.Db, sqlStr, common.Account, task_id)
 			if err != nil {
-				fmt.Printf("[+] Cancel task[%d] successfully but failed to update task log\n", task_id)
+				fmt.Printf("[✅] Cancel task[%d] successfully but failed to update task log\n", task_id)
 				return
 			}
-			fmt.Printf("[+] Cancel task[%d] successfully\n", task_id)
+			fmt.Printf("[✅] Cancel task[%d] successfully\n", task_id)
 		}
 	}
 }
 
 func select_handler(ary []string) {
 	if len(ary) < 2 {
-		fmt.Println("[-] Usage: select botid, please enter help command")
+		fmt.Println("[💀] Usage: select botid, please enter help command")
 		return
 	}
 	// Check it's a number
 	botid, err := strconv.ParseInt(ary[1], 10, 64)
 	if err != nil || botid == 0 {
-		fmt.Println("[-] You need to enter a bot id which is number")
+		fmt.Println("[💀] You need to enter a bot id which is number")
 		return
 	}
 	// Check if bot in database record
 	var bot common.Client
 	if !get_bot_info(botid, &bot) {
-		fmt.Println("[-] Bot doesn't exist, please enter right bot id")
+		fmt.Println("[💀] Bot doesn't exist, please enter right bot id")
 		return
 	}
 	// Switch mode
@@ -134,7 +137,7 @@ func select_handler(ary []string) {
 
 func exec_handler(ary []string) {
 	if len(ary) < 2 {
-		fmt.Println("[-] Usage: exec [-h] path/url [args], please enter help command")
+		fmt.Println("[💀] Usage: exec [-h] path/url [args], please enter help command")
 		return
 	}
 	var options string = ""
@@ -164,10 +167,10 @@ func exec_handler(ary []string) {
 	err := db1.QueryRow(common.Db, sqlStr).Scan(&command_id)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			fmt.Println("[-] No such command")
+			fmt.Println("[💀] No such command")
 
 		} else {
-			fmt.Println("[-] Command error")
+			fmt.Println("[💀] Command error")
 		}
 		return
 	}
@@ -180,26 +183,26 @@ func exec_handler(ary []string) {
 	byt, _ := json.Marshal(map_args)
 	_, err = db1.Insert(common.Db, sqlStr, common.CurrentBot, command_id, byt, "queued")
 	if err != nil {
-		fmt.Println("[-] Failed to generate command")
+		fmt.Println("[💀] Failed to generate command")
 		return
 	} else {
-		fmt.Println("[+] Generate command okay")
+		fmt.Println("[✅] Generate command okay")
 	}
 }
 
 func info_handler(ary []string) {
 	if len(ary) < 2 {
-		fmt.Println("[-] Usage: info id, request latest bot information")
+		fmt.Println("[💀] Usage: info id, request latest bot information")
 		return
 	}
 	botid, err := strconv.ParseInt(ary[1], 10, 64)
 	if err != nil {
-		fmt.Println("[-] You need to enter a bot id which is number")
+		fmt.Println("[💀] You need to enter a bot id which is number")
 		return
 	}
 	var bot common.Client
 	if !get_bot_info(botid, &bot) {
-		fmt.Println("[-] Bot doesn't exist, please enter right bot id")
+		fmt.Println("[💀] Bot doesn't exist, please enter right bot id")
 		return
 	}
 	show_bot_info(&bot)
@@ -220,23 +223,23 @@ func get_bot_info(botid int64, bot *common.Client) bool {
 func mode_handler(ary []string) {
 	if len(ary) == 1 {
 		if common.CurrentBot == 0 {
-			fmt.Println("[+] Broadcast mode")
+			fmt.Println("[✅] Broadcast mode")
 		} else {
-			fmt.Println("[+] Current bot ID: " + strconv.FormatInt(common.CurrentBot, 10))
+			fmt.Println("[✅] Current bot ID: " + strconv.FormatInt(common.CurrentBot, 10))
 		}
 	} else {
 		if ary[1] == "broadcast" {
 			common.CurrentBot = 0
-			fmt.Println("[+] Switch to broadmode")
+			fmt.Println("[✅] Switch to broadmode")
 		} else {
-			fmt.Println("[-] Failed to switch to broadcast mode")
+			fmt.Println("[💀] Failed to switch to broadcast mode")
 		}
 	}
 }
 
 func del_log(ary []string) {
 	if len(ary) < 3 {
-		fmt.Println("[-] Usage: log del [log_id/all], please enter right command")
+		fmt.Println("[💀] Usage: log del [log_id/all], please enter right command")
 		return
 	}
 
@@ -244,36 +247,36 @@ func del_log(ary []string) {
 		sqlStr := "truncate table logs"
 		_, err := db1.Exec(common.Db, sqlStr)
 		if err != nil {
-			fmt.Println("[-] Failed to delete logs")
+			fmt.Println("[💀] Failed to delete logs")
 			return
 		}
-		fmt.Println("[+] Delete logs successfully")
+		fmt.Println("[✅] Delete logs successfully")
 		return
 	}
 
 	id, err := strconv.ParseInt(ary[2], 10, 64)
 	if err != nil {
-		fmt.Println("[-] Please enter right task ID")
+		fmt.Println("[💀] Please enter right task ID")
 		return
 	}
 	sqlStr := "delete from logs where id=?"
 	row, err := db1.Exec(common.Db, sqlStr, id)
 	if err != nil {
-		fmt.Printf("[-] Failed to delete log[%d]\n", id)
+		fmt.Printf("[💀] Failed to delete log[%d]\n", id)
 		return
 	} else if row == 0 {
-		fmt.Printf("[-] log[%d] doesn't exist\n", id)
+		fmt.Printf("[💀] log[%d] doesn't exist\n", id)
 		return
 	}
 
-	fmt.Printf("[+] log[%d] deleted okay\n", id)
+	fmt.Printf("[✅] log[%d] deleted okay\n", id)
 }
 
 func export_logs(ary []string) {
 	sqlStr := "select id,account_id,task_id,client_id,action,message,status,created_at,ip from logs"
 	rows, err := db1.QueryRows(common.Db, sqlStr)
 	if err != nil {
-		fmt.Println("[-] Error in exporting logs")
+		fmt.Println("[💀] Error in exporting logs")
 		return
 	}
 
@@ -285,12 +288,14 @@ func export_logs(ary []string) {
 		fmtTime = t.Format("2006_01_02_15_04_05")
 		fmtTime += "_logs.csv"
 	} else {
-		fmtTime = ary[2]
+		if !utils.IsSameSuffix(ary[2], "csv") {
+			fmtTime += "_tasks.csv"
+		}
 	}
 
 	file, err := os.Create(fmtTime)
 	if err != nil {
-		fmt.Println("[-] Error in exporting logs")
+		fmt.Println("[💀] Error in exporting logs")
 		return
 	}
 	defer file.Close()
@@ -302,7 +307,7 @@ func export_logs(ary []string) {
 	// Write headers to csv file
 	err = writer.Write([]string{"ID", "AccountID", "TaskID", "BotID", "Action", "Message", "Status", "Create Time", "IP"})
 	if err != nil {
-		fmt.Println("[-] Error in exporting logs")
+		fmt.Println("[💀] Error in exporting logs")
 		return
 	}
 	saved_id := 0
@@ -335,7 +340,7 @@ func export_logs(ary []string) {
 		}
 	}
 
-	fmt.Println("[+] Export to " + fmtTime)
+	fmt.Println("[✅] Export to " + fmtTime)
 }
 
 func list_logs() {
@@ -358,7 +363,7 @@ func list_logs() {
 
 	res, err := db1.QueryRows(common.Db, sqlStr, common.Account)
 	if err != nil {
-		fmt.Println("[-] Failed to list logs")
+		fmt.Println("[✅] Failed to list logs")
 		return
 	}
 	defer res.Close()
@@ -396,7 +401,7 @@ func list_logs() {
 
 func log_handler(ary []string) {
 	if len(ary) < 2 {
-		fmt.Println("[-] Usage: log [list/del/export], please enter help command")
+		fmt.Println("[💀] Usage: log [list/del/export], please enter help command")
 		return
 	}
 
@@ -410,6 +415,87 @@ func log_handler(ary []string) {
 	}
 }
 
+func export_tasks(ary []string) {
+	sql := `select l.guid, c.name, t.args, c.description, t.status, t.created_at, t.completed_at ` +
+		`from tasks as t join commands as c on t.command_id = c.id join clients as l on t.bot_id = l.id`
+	rows, err := db1.QueryRows(common.Db, sql)
+	if err != nil {
+		fmt.Println("[❗] Error in exporting tasks")
+		return
+	}
+	defer rows.Close()
+	// Check if tasks exist
+	if !rows.Next() {
+		fmt.Println("[💀] No tasks to export")
+		return
+	}
+	// Build tasks log name
+	fmtTime := ""
+	if len(ary) < 3 {
+		timestamp := utils.GenerateUtcTimestamp()
+		t := time.UnixMilli(timestamp)
+		fmtTime = t.Format("2006_01_02_15_04_05")
+		fmtTime += "_tasks.csv"
+	} else {
+		fmtTime = ary[2]
+		if !utils.IsSameSuffix(ary[2], "csv") {
+			fmtTime += "_tasks.csv"
+		}
+	}
+	// Create tasks log file
+	file, err := os.Create(fmtTime)
+	if err != nil {
+		fmt.Println("[💀] Error in exporting tasks")
+		return
+	}
+	defer file.Close()
+
+	// Write to csv file
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+	// Write header
+	err = writer.Write([]string{"GUID", "Command", "Arguments", "Description", "Status", "CreatedAt", "CompletedAt"})
+	if err != nil {
+		fmt.Println("[💀] Error in exporting tasks")
+		return
+	}
+
+	task_guid := ""
+	task_command_name := ""
+	task_command_args := ""
+	task_command_description := ""
+	task_command_status := ""
+	task_created_at := ""
+	task_completed_at := ""
+
+	for {
+		if err = rows.Scan(&task_guid, &task_command_name, &task_command_args, &task_command_description,
+			&task_command_status, &task_created_at, &task_completed_at); err != nil {
+			if !rows.Next() {
+				break
+			}
+			continue
+		}
+
+		record := []string{task_guid,
+			task_command_name,
+			task_command_args,
+			task_command_description,
+			task_command_status,
+			task_created_at,
+			task_completed_at}
+
+		if err := writer.Write(record); err != nil {
+			continue
+		}
+
+		if !rows.Next() {
+			break
+		}
+	}
+	fmt.Println("[✅] Export to " + fmtTime)
+}
+
 func list_tasks(ary []string) {
 	sql := "select t.id, c.name, t.args, t.status, t.created_at, t.completed_at from tasks as t join commands as c on t.command_id = c.id"
 	rows, err := db1.QueryRows(common.Db, sql)
@@ -417,6 +503,7 @@ func list_tasks(ary []string) {
 		fmt.Println("[❗] Error in list tasks")
 		return
 	}
+	defer rows.Close()
 	if !rows.Next() {
 		fmt.Println("[💀] No tasks found")
 		return
@@ -449,22 +536,21 @@ func list_tasks(ary []string) {
 			break
 		}
 	}
-	defer rows.Close()
-
 }
 
 func task_handler(ary []string) {
 	// task [list/export]
 	if len(ary) < 2 {
-		fmt.Println("[-] task [list/export], please enter help command")
+		fmt.Println("[💀] task [list/export], please enter help command")
 		return
 	}
 
 	switch ary[1] {
 	case "list", "l":
 		list_tasks(ary)
+	case "export", "r":
+		export_tasks(ary)
 	}
-
 }
 
 func list_handler() {
@@ -491,11 +577,11 @@ func list_handler() {
 
 	for {
 		if rows.Scan(&id) != nil {
-			fmt.Println("[-] Error in showing botid = " + strconv.FormatInt(id, 10))
+			fmt.Println("[💀] Error in showing botid = " + strconv.FormatInt(id, 10))
 			continue
 		}
 		if !get_bot_info(id, &bot) {
-			fmt.Println("[-] Bot " + strconv.FormatInt(id, 10) + " doesn't exist, please enter right bot id")
+			fmt.Println("[💀] Bot " + strconv.FormatInt(id, 10) + " doesn't exist, please enter right bot id")
 			continue
 		}
 		show_bot_info(&bot)
@@ -522,13 +608,13 @@ func clear_handler() {
 func build_handler() {
 	payload, path := BuildPayload()
 	if nil == payload {
-		fmt.Println("[-] Failed to build payload")
+		fmt.Println("[💀] Failed to build payload")
 		return
 	}
 	if utils.WriteBinary(path, payload) {
-		fmt.Println("[+] Successfully built payload, path: " + path)
+		fmt.Println("[✅] Successfully built payload, path: " + path)
 	} else {
-		fmt.Println("[-] Failed to build payload")
+		fmt.Println("[💀] Failed to build payload")
 	}
 }
 
@@ -570,6 +656,9 @@ func Panel() {
 			build_handler()
 		case "task", "t":
 			task_handler(cmdAry)
+		case "exit", "e":
+			fmt.Println("[🏴‍☠️] Thanks for using THISBOT panel, bye Σ(っ °Д °;)っ")
+			os.Exit(0)
 		}
 	}
 }

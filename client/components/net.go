@@ -16,7 +16,7 @@ import (
 )
 
 var clientHTTP = &http.Client{
-	//Timeout: 10 * time.Second,
+	Timeout: 20 * time.Second,
 }
 
 var clientHTTPS = &http.Client{
@@ -25,7 +25,7 @@ var clientHTTPS = &http.Client{
 			InsecureSkipVerify: true,
 		},
 	},
-	//Timeout: 10 * time.Second,
+	Timeout: 20 * time.Second,
 }
 
 func get_client(useSSL bool) *http.Client {

@@ -11,7 +11,7 @@ var (
 	Seed             = rand.New(rand.NewSource(time.Now().UnixNano()))
 	Cfg              = Config{}
 	Db       *sql.DB = nil
-	Version          = "v1.5.6"
+	Version          = "v1.5.8"
 	StubPath         = map[string]string{"winexe": "../bin/Stub",
 		"winshellcode": "../bin/Stub.bin",
 		"linux":        "../bin/Stub",

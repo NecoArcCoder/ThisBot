@@ -99,9 +99,9 @@ func InitLog(cfg *common.Config) bool {
 func Init(cfg *common.Config) bool {
 	// Initialize log system
 	if !InitLog(cfg) {
-		log.Println("[-] Initialize log system failed")
+		log.Println("[💀] Initialize log system failed")
 	} else {
-		log.Println("[+] Log system initialized successfully")
+		log.Println("[✅] Log system initialized successfully")
 	}
 	// Init mysql
 	common.Db = db1.InitMysql(cfg.Database.User, cfg.Database.Password, cfg.Database.Name,

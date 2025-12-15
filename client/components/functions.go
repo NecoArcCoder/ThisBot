@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"runtime"
 	"syscall"
@@ -81,4 +82,16 @@ func kill(name string) bool {
 	ret, _, _ := pfnTerminateProcess.Call(hProcess, 0)
 
 	return ret != 0
+}
+
+// TODO: It has bugs
+func uinstall() {
+	_ = os.Chdir(os.TempDir())
+	str := `ping 127.0.0.1 -n 3 > nul && del /f /q "` + get_module_file() + `"`
+	cmd := exec.Command("cmd", "/C", str)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	if err := cmd.Start(); err != nil {
+		return
+	}
+	os.Exit(0)
 }

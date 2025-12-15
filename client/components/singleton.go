@@ -1,8 +1,7 @@
 package components
 
 import (
-	"fmt"
-	"os"
+	"errors"
 	"runtime"
 	"syscall"
 	"unsafe"
@@ -12,12 +11,11 @@ import (
 
 func is_already_exist(name string) (bool, uintptr) {
 	if runtime.GOOS == "windows" {
-		wname, _ := syscall.UTF16PtrFromString(name)
-		fmt.Println("mutex: ", name, ", pid: ", os.Getpid())
-		ret, _, _ := pfnCreateMutexW.Call(0, 0, uintptr(unsafe.Pointer(wname)))
+		mutex_name := "Global\\" + name
+		wname, _ := syscall.UTF16PtrFromString(mutex_name)
+		ret, _, err := pfnCreateMutexW.Call(0, 0, uintptr(unsafe.Pointer(wname)))
 		if ret != 0 {
-			code, _, _ := pfnGetLastError.Call()
-			if code == uintptr(windows.ERROR_ALREADY_EXISTS) {
+			if errors.Is(err, windows.ERROR_ALREADY_EXISTS) {
 				pfnCloseHandle.Call(ret)
 				return true, 0
 			}

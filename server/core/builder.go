@@ -44,7 +44,7 @@ func BuildPayload() ([]byte, string) {
 
 	var command string
 	if utils.FileExist(common.ConfigPayloadDefaultFileName) {
-		fmt.Print("[*] Load existing configure?(y/n, default is y)\nBuild> ")
+		fmt.Print("[⛏️] Load existing configure?(y/n, default is y)\nBuild> ")
 		choice := utils.ReadFromIO()
 		if choice != "n" && choice != "no" {
 			// Read payload configure
@@ -58,56 +58,56 @@ func BuildPayload() ([]byte, string) {
 
 	// C2 IP
 	for {
-		fmt.Print("[*] Enter C2 IP(URL): \nBuild> ")
+		fmt.Print("[⛏️] Enter C2 IP(URL): \nBuild> ")
 		command = utils.ReadFromIO()
 		if utils.IsLegalURLOrIP(command) {
 			config.Host[0] = command
 			break
 		}
-		fmt.Println("[-] Wrong IP(URL) format")
+		fmt.Println("[💀] Wrong IP(URL) format")
 	}
 	// C2 Port
 	for {
-		fmt.Print("[*] Enter C2 port(0~65535): \nBuild> ")
+		fmt.Print("[⛏️] Enter C2 port(0~65535): \nBuild> ")
 		command = utils.ReadFromIO()
 		port, err := strconv.ParseInt(command, 10, 64)
 		if err != nil || (port < 0 || port > 65535) {
-			fmt.Println("[-] Wrong port(0~65535)")
+			fmt.Println("[💀] Wrong port(0~65535)")
 			continue
 		}
 		config.Host[0] += fmt.Sprintf(":%d", port)
 		break
 	}
 	// SSL setup
-	fmt.Print("[*] Enable SSL?(y/n, default is y)\nBuild> ")
+	fmt.Print("[⛏️] Enable SSL?(y/n, default is y)\nBuild> ")
 	command = utils.ReadFromIO()
 	config.Use_ssl = true
 	if command == "n" || command == "no" {
 		config.Use_ssl = false
 	}
 	// Singleton setup
-	fmt.Print("[*] Single instance?(y/n, default is y)\nBuild> ")
+	fmt.Print("[⛏️] Single instance?(y/n, default is y)\nBuild> ")
 	config.Single = true
 	command = utils.ReadFromIO()
 	if command == "n" || command == "no" {
 		config.Single = false
 	}
 	// Anti-Debugger
-	fmt.Print("[*] Enable Anti-Debugger?(y/n, default is y)\nBuild> ")
+	fmt.Print("[⛏️] Enable Anti-Debugger?(y/n, default is y)\nBuild> ")
 	command = utils.ReadFromIO()
 	config.Anti_debug = true
 	if command == "n" || command == "no" {
 		config.Anti_debug = false
 	}
 	// Anti-VM
-	fmt.Print("[*] Enable Anti-VM?(y/n, default is y)\nBuild> ")
+	fmt.Print("[⛏️] Enable Anti-VM?(y/n, default is y)\nBuild> ")
 	command = utils.ReadFromIO()
 	config.Anti_vm = true
 	if command == "n" || command == "no" {
 		config.Anti_vm = false
 	}
 	// Anti-Sandbox
-	fmt.Print("[*] Enable Anti-Sandbox?(y/n, default is y)\nBuild> ")
+	fmt.Print("[⛏️] Enable Anti-Sandbox?(y/n, default is y)\nBuild> ")
 	command = utils.ReadFromIO()
 	config.Anti_sandbox = true
 	if command == "n" || command == "no" {
@@ -115,13 +115,13 @@ func BuildPayload() ([]byte, string) {
 	}
 	// Delay seconds
 	for {
-		fmt.Print("[*] Delay seconds?(Must >= 0, default is 0)\nBuild> ")
+		fmt.Print("[⛏️] Delay seconds?(Must >= 0, default is 0)\nBuild> ")
 		command = utils.ReadFromIO()
 		config.Delay = 0
 		if command != "0" && command != "" {
 			delay_sec, err := strconv.ParseInt(command, 10, 64)
 			if err != nil || delay_sec < 0 {
-				fmt.Println("[-] Delay seconds must be greater than 0")
+				fmt.Println("[💀] Delay seconds must be greater than 0")
 				continue
 			}
 			config.Delay = uint(delay_sec)
@@ -131,37 +131,33 @@ func BuildPayload() ([]byte, string) {
 	// Generate mutex name
 	config.Mutex_name = utils.RandomString(16)
 	// Install payload
-	fmt.Print("[*] Enable install?(y/n, default is n)\nBuild> ")
+	fmt.Print("[⛏️] Enable install?(y/n, default is n)\nBuild> ")
 	config.Install = false
 	command = utils.ReadFromIO()
 	if command == "y" || command == "yes" {
 		config.Install = true
 		// install file
 		for {
-			fmt.Print("[*] Enter install filename(default is random name): \nBuild> ")
+			fmt.Print("[⛏️] Enter install filename(default is random name): \nBuild> ")
 			command := utils.ReadFromIO()
 			if command == "" {
 				command = utils.RandomString(8)
 			}
-			fmt.Print("[*] Do you want to rename the install file?(y/n, default is n)")
-			command = utils.ReadFromIO()
-			if !(command == "" || command == "y" || command == "yes") {
-				break
-			}
+			break
 		}
 	}
 
 	// Save or update payload.yaml config file
-	fmt.Print("[*] Do you wanna save the config?(y/n, default is y)\nBuild> ")
+	fmt.Print("[⛏️] Do you wanna save the config?(y/n, default is y)\nBuild> ")
 	command = utils.ReadFromIO()
 	if command != "n" && command != "no" {
 		// Save payload configure file
 		ymlConfig, _ := yaml.Marshal(&config)
 		err := os.WriteFile(common.ConfigPayloadDefaultFileName, ymlConfig, 0644)
 		if err != nil {
-			fmt.Println("[-] Error writing default payload config file")
+			fmt.Println("[💀] Error writing default payload config file")
 		} else {
-			fmt.Println("[+] Successfully saved default payload config file")
+			fmt.Println("[✅] Successfully saved default payload config file")
 		}
 	}
 GenPayload:
@@ -169,13 +165,13 @@ GenPayload:
 	var finalPath string = config2.GenerateRandom(8)
 	// Payload style
 	for {
-		fmt.Println("[*] Choose payload type(default is windows exe)\n")
+		fmt.Println("[⛏️] Choose payload type(default is windows exe)\n")
 		fmt.Println("1. Windows Executable\n2. Windows Shellcode\n3. Linux Executable\n4. Others quit builder")
 		fmt.Print("Build> ")
 		command = utils.ReadFromIO()
 		cmd, err := strconv.ParseInt(command, 10, 64)
 		if err != nil {
-			fmt.Println("[-] Wrong command, please try again")
+			fmt.Println("[💀] Wrong command, please try again")
 			continue
 		}
 		switch cmd {
@@ -204,7 +200,7 @@ GenPayload:
 	key := utils.GenerateRandomBytes(32)
 	cipher_config := common.EncChacha20(key, bytesConfig)
 	if cipher_config == nil || key == nil {
-		fmt.Println("[-] Failed to generate encrypted config")
+		fmt.Println("[💀] Failed to generate encrypted config")
 		return nil, ""
 	}
 
