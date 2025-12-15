@@ -6,8 +6,11 @@ Misuse of this software may violate laws. Read the disclaimer below before using
 # 📌 Features
 1. Remote Download Execute: It could execute a local executable or download from remote host and execute
 2. Evasion: anti-vm, anti-sandbox and anti-debugger features
-3. Task logs: It could record task status and manage it or export it.
-4. A friendly builder
+3. Operation logs: It could record all opeartions or export
+4. Task logs: Check task status and manage it or export
+5. Friendly builder
+6. Install function
+
 
 # 📄 License
 MIT License  

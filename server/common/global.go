@@ -11,7 +11,7 @@ var (
 	Seed             = rand.New(rand.NewSource(time.Now().UnixNano()))
 	Cfg              = Config{}
 	Db       *sql.DB = nil
-	Version          = "v1.5.4"
+	Version          = "v1.5.6"
 	StubPath         = map[string]string{"winexe": "../bin/Stub",
 		"winshellcode": "../bin/Stub.bin",
 		"linux":        "../bin/Stub",
@@ -63,6 +63,7 @@ type Client struct {
 	Token       string `json:"token"`
 	Ip          string `json:"ip"`
 	Whoami      string `json:"whoami"`
+	GuidHash    string `json:"guid_hash"`
 	Os          string `json:"os"`
 	Installdate string `json:"installdate"`
 	Isadmin     string `json:"isadmin"`

@@ -1,7 +1,10 @@
 package components
 
 import (
+	"io"
 	"log"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
@@ -96,7 +99,6 @@ func find_pid_by_name(name string) uint32 {
 }
 
 func reg_read_key(key registry.Key, subPath string, value string, keyType int) any {
-
 	key1 := reg_create_key(key, subPath)
 	if key1 == 0 {
 		return nil
@@ -180,4 +182,27 @@ func reg_create_or_update_value(key registry.Key, subPath string, value string, 
 	default:
 		return false
 	}
+}
+
+func copy_file(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	if err = os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return err
+	}
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	if _, err = io.Copy(out, in); err != nil {
+		return err
+	}
+	return out.Sync()
 }

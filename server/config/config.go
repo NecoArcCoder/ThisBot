@@ -31,7 +31,7 @@ func GenerateDefaultConfig(path string) error {
 
 	cfg.Database.Host = "127.0.0.1"
 	cfg.Database.Port = 3306
-	cfg.Database.User = "master"
+	cfg.Database.User = "root"
 	cfg.Database.Password = "1234"
 	cfg.Database.Name = "thisbot"
 

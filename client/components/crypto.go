@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+
 	"golang.org/x/crypto/chacha20"
 )
 
@@ -40,7 +41,6 @@ func create_sign(token string, guid string, timestamp string) []byte {
 }
 
 func enc_chacha20(key, plain []byte) []byte {
-
 	nonce := make([]byte, chacha20.NonceSize)
 	_, err := rand.Read(nonce)
 	if err != nil {

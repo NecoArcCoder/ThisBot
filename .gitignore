@@ -6,6 +6,7 @@
 /server/.vscode/
 /test/
 /pic/
+/bin/
 /server/*.exe
 /server/Log/
 /server/payload.yaml
