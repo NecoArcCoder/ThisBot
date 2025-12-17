@@ -26,8 +26,10 @@ func GenerateRandom(length int) string {
 func GenerateDefaultConfig(path string) error {
 	cfg := common.Config{}
 
-	cfg.Server.Host = "0.0.0.0"
+	cfg.Server.Host = "127.0.0.1"
 	cfg.Server.Port = 8080
+	// Default we don't use TLS bcz most users are dumb
+	cfg.Server.Tls = false
 
 	cfg.Database.Host = "127.0.0.1"
 	cfg.Database.Port = 3306

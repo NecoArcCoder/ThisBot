@@ -8,8 +8,8 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -63,14 +63,24 @@ func ReadFromIO() string {
 	return command
 }
 
-func IsLegalURLOrIP(url0 string) bool {
-	ret, err := url.Parse(url0)
+func IsValidIP(s string) bool {
+	return net.ParseIP(s) != nil
+}
 
-	if err == nil && (ret.Host != "" && ret.Scheme != "") {
+func IsValidDomain(s string) bool {
+	var domainRegex = regexp.MustCompile(`^(?i)[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$`)
+	return domainRegex.MatchString(s)
+}
+
+func IsLegalURLOrIP(url0 string) bool {
+	if IsValidDomain(url0) || url0 == "localhost" {
 		return true
 	}
-	ret1 := net.ParseIP(url0)
-	return ret1 != nil
+	//ret, err := url.Parse(url0)
+	//if err == nil && (ret.Host != "" && ret.Scheme != "") {
+	//	return true
+	//}
+	return IsValidIP(url0)
 }
 
 func IntToBytes(n int) []byte {

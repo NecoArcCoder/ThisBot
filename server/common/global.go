@@ -11,7 +11,7 @@ var (
 	Seed             = rand.New(rand.NewSource(time.Now().UnixNano()))
 	Cfg              = Config{}
 	Db       *sql.DB = nil
-	Version          = "v1.5.8"
+	Version          = "v1.6.8"
 	StubPath         = map[string]string{"winexe": "../bin/Stub",
 		"winshellcode": "../bin/Stub.bin",
 		"linux":        "../bin/Stub",
@@ -24,11 +24,16 @@ var (
 
 const ConfigDefaultFileName = "config.yaml"
 const ConfigPayloadDefaultFileName = "payload.yaml"
+const DefaultRootKeyPath = "./root.key"
+const DefaultRootCertPath = "./root.pem"
+const DefaultServerCertPath = "./server.crt"
+const DefaultServerKeyPath = "./server.key"
 
 type Config struct {
 	Server struct {
 		Host string `yaml:"host"`
 		Port int    `yaml:"port"`
+		Tls  bool   `yaml:"tls"`
 	} `yaml:"server"`
 	Database struct {
 		Host     string `yaml:"host"`

@@ -48,19 +48,19 @@ func main() {
 	// Initialize all
 	config.Init(&common.Cfg)
 
+	// Initialize usable commands
 	if len(os.Args) > 1 && os.Args[1] == "--init-commands" {
 		db1.InitCommands(common.Db)
 	}
-
 	// Running the task cleaner
 	core.TaskCleaner(common.Db, time.Duration(common.TaskCleanerIntervalSec)*time.Second)
 	// Running the bot cleaner
 	core.DeadBotCleaner(common.Db)
 	// Running the server
-	go core.Server()
-
-	time.Sleep(1000)
-
+	router := core.RegisterRouters()
+	core.StartServer(router)
+	// Block for 1 second
+	time.Sleep(time.Second * time.Duration(1))
 	// Running command panel
 	core.Panel()
 }

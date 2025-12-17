@@ -24,6 +24,7 @@ type BuildConfig struct {
 	Mutex_name   string   `json:"mutex" yaml:"mutex"`
 	Delay        uint     `json:"delay" yaml:"delay"`
 	Use_ssl      bool     `json:"ssl" yaml:"ssl"`
+	RootPem      string   `json:"root_pem"`
 }
 
 func BuildPayload() ([]byte, string) {
@@ -84,6 +85,15 @@ func BuildPayload() ([]byte, string) {
 	config.Use_ssl = true
 	if command == "n" || command == "no" {
 		config.Use_ssl = false
+	}
+	if config.Use_ssl {
+		// Read root.pem
+		rootPem, err := os.ReadFile(common.DefaultRootCertPath)
+		if err != nil {
+			fmt.Println("[💀] Unable to read root certificate, you can try to generate certificate again. Or restart and use HTTP server.")
+			return nil, ""
+		}
+		config.RootPem = common.Base64Enc(rootPem)
 	}
 	// Singleton setup
 	fmt.Print("[⛏️] Single instance?(y/n, default is y)\nBuild> ")
