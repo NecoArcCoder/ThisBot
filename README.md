@@ -20,6 +20,7 @@ A lightweight Go-based HTTP botnet framework built for <b>educational purposes</
 5. Friendly builder
 6. Install function
 7. Auto-startup
+8. Support HTTP/HTTPS mode
 
 # ⛏️ How to use it
 - Install Mysql server [Mysql Community Version](https://dev.mysql.com/downloads/mysql/) and start. (currently, server only support working on windows)
@@ -31,6 +32,10 @@ source "X:/YouPath/thisbot.sql";
 - Open cmd.exe, type following command to generate basic configure and configure yours
 ```bash
 ThisBotC2.exe --init-config
+```
+- Initialize commands to mysql
+```bash
+ThisBotC2.exe --init-commands
 ```
 - Run ThisBotC2.exe in cmd/powershell, then use "help" command first
 
