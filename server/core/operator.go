@@ -49,7 +49,7 @@ func Panel() {
 			log_handler(cmdAry)
 		case "exec", "x":
 			exec_handler(cmdAry)
-		case "clear":
+		case "clear", "cls":
 			clear_handler()
 			show_banner()
 		case "info":
@@ -60,6 +60,8 @@ func Panel() {
 			build_handler()
 		case "task", "t":
 			task_handler(cmdAry)
+		case "uninstall", "u":
+			uninstall_handler()
 		case "exit", "e":
 			fmt.Println("[🏴‍☠️] Thanks for using THISBOT panel, bye Σ(っ °Д °;)っ")
 			os.Exit(0)

@@ -51,8 +51,8 @@ func help_handler() {
 	fmt.Println("9. log command: \n  log list: it will show all task logs\n  log del [all/n]: it will delete all records or specific one\n  log export [filename]: If only use 'log export' will generate a .csv file with a timestamp name, or you can specify your own.")
 	fmt.Println("10. cancel [task_id/all]: if option is all means cancel all tasks, or just task specfied by taskid")
 	fmt.Println("11. task: task [list/export]: \n  task list: it will show all tasks\n  task export [*.csv]: if no specific name then generate a timestamp name, or use your specific name.")
-	fmt.Println("12. exit: Exit server")
-
+	fmt.Println("12. uninstall: Uninstall the bot")
+	fmt.Println("13. exit: Exit server")
 }
 
 func tls_banner() {

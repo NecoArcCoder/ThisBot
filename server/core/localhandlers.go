@@ -180,6 +180,32 @@ func select_handler(ary []string) {
 	show_bot_info(&bot)
 }
 
+func uninstall_handler() {
+	sqlStr := "select id from commands where name='uninstall'"
+	command_id := 0
+	if err := db1.QueryRow(common.Db, sqlStr).Scan(&command_id); err != nil {
+		if err == sql.ErrNoRows {
+			fmt.Println("[💀] No such command")
+		} else {
+			fmt.Println("[💀] Command error")
+		}
+		return
+	}
+	map_args := map[string]interface{}{}
+	byt, _ := json.Marshal(map_args)
+	sqlStr = "insert into tasks(bot_id, command_id, status, args) values (?,?,?,?)"
+	if common.CurrentBot == 0 {
+		fmt.Println("[❗] It's broadcast mode now, can't use 'uninstall' command")
+		return
+	}
+	_, err := db1.Insert(common.Db, sqlStr, common.CurrentBot, command_id, "queued", byt)
+	if err != nil {
+		fmt.Println("[💀] Failed to generate uninstall command")
+	} else {
+		fmt.Println("[✅] Generate uninstall command successfully")
+	}
+}
+
 func exec_handler(ary []string) {
 	if len(ary) < 2 {
 		fmt.Println("[💀] Usage: exec [-h] path/url [args], please enter help command")
@@ -213,7 +239,6 @@ func exec_handler(ary []string) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			fmt.Println("[💀] No such command")
-
 		} else {
 			fmt.Println("[💀] Command error")
 		}

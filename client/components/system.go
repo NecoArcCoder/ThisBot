@@ -132,11 +132,23 @@ func reg_delete_value(key registry.Key, subPath string, name string) bool {
 }
 
 func reg_delete_key(key registry.Key, subPath string) bool {
-	err := registry.DeleteKey(key, subPath)
+	subKey, err := registry.OpenKey(key, subPath,
+		registry.QUERY_VALUE|registry.ENUMERATE_SUB_KEYS|registry.SET_VALUE)
 	if err != nil {
 		return false
 	}
-	return true
+	defer subKey.Close()
+
+	names, err := subKey.ReadSubKeyNames(-1)
+	if err != nil {
+		return false
+	}
+	for _, name := range names {
+		if !reg_delete_key(key, subPath+`\`+name) {
+			return false
+		}
+	}
+	return registry.DeleteKey(key, subPath) == nil
 }
 
 func reg_create_key(root registry.Key, subPath string) registry.Key {

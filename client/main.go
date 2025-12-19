@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
+	
 	args := os.Args
 
 	if len(args) >= 3 && args[1] == "-c" {
