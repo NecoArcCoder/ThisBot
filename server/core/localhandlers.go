@@ -4,15 +4,19 @@ import (
 	"ThisBot/common"
 	"ThisBot/db1"
 	"ThisBot/utils"
+	"crypto/x509"
 	"database/sql"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func log_handler(ary []string) {
@@ -92,7 +96,7 @@ func clear_handler() {
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/c", "cls")
 	} else {
-		cmd = exec.Command("cmd")
+		cmd = exec.Command("clear")
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Run()
@@ -156,6 +160,92 @@ func cancel_handler(ary []string) {
 			fmt.Printf("[✅] Cancel task[%d] successfully\n", task_id)
 		}
 	}
+}
+
+func cert_handler(ary []string) {
+	if len(ary) > 1 {
+		if ary[1] == "list" {
+			certPem, err := os.ReadFile(common.DefaultServerCertPath)
+			if err != nil {
+				fmt.Println("[💀] Failed to read server certificate")
+				return
+			}
+			block, _ := pem.Decode(certPem)
+			cert, _ := x509.ParseCertificate(block.Bytes)
+			fmt.Println("[🕐] Certificate valid duration: " + cert.NotBefore.String() + " to " + cert.NotAfter.String())
+			if time.Now().UTC().After(cert.NotAfter) {
+				fmt.Println("[❌] Certificate expired")
+			} else if time.Until(cert.NotAfter) < 7*24*time.Hour {
+				fmt.Println("[❗] Certificate will expire soon(within 7 days)")
+			} else {
+				fmt.Println("[✅] Certificate valid")
+			}
+			return
+		}
+	}
+
+	for {
+		// Enter a CA organization name
+		fmt.Print("[⛏️] Input a server certificate authority organization name(Press \"Enter\" to generate a random one): \nBuilder> ")
+		organization := strings.TrimSpace(utils.ReadFromIO())
+		if len(organization) == 0 {
+			// Generate a random fake CA name
+			FakeCAName := []string{
+				"Global Network Services", "Unified Infrastructure Group", "Enterprise Connectivity Services",
+				"Core Systems Integration", "Distributed Services Group", "Applied Network Solutions", "Infrastructure Reliability Services",
+			}
+			organization = FakeCAName[common.Seed.Intn(len(FakeCAName))]
+			fmt.Println("[✅] Organization: " + organization)
+		}
+		// Enter the CA root certificate valid duration
+		fmt.Print("[⛏️] Please enter the valid duration of the server certificate, in the format: \"YYYY-MM-dd\"(Default is 1000-00-00)\nBuilder> ")
+		duration := strings.TrimSpace(utils.ReadFromIO())
+		if len(duration) == 0 {
+			duration = "1000-00-00"
+		}
+		fmt.Println("[✅] Valid duration: " + duration)
+
+		fmt.Print("[⛏️] Do you have domains, if not, press 'Enter' directly, or enter them split by space(example: 'xxxx.com xxxxx.org localhost')\nBuilder> ")
+		var domains []string = nil
+		var domains_full []string = nil
+		var ips []net.IP = nil
+		var ip string
+		strDomains := strings.TrimSpace(utils.ReadFromIO())
+		if len(strDomains) == 0 {
+			ips = make([]net.IP, 0)
+			fmt.Print("[⛏️] What's your VPS IP which installed your C2?\nBuilder> ")
+			ip = strings.TrimSpace(utils.ReadFromIO())
+			for {
+				if !utils.IsLegalURLOrIP(ip) {
+					fmt.Println("[💀] Illegal IP, please enter a valid IP address")
+				} else {
+					ips = append(ips, net.ParseIP(ip))
+					fmt.Println("[✅] Current certificate IP: " + ip)
+					break
+				}
+			}
+		} else {
+			domains = make([]string, 0)
+			domains_full = strings.Split(strDomains, " ")
+			for _, domain := range domains_full {
+				if !utils.IsLegalURLOrIP(domain) {
+					fmt.Println("[💀] Domain \"" + domain + "\" is illegal")
+				} else {
+					domains = append(domains, domain)
+				}
+			}
+		}
+		// Try to generate CA certificate
+		if common.ResignCertificate(organization, duration, domains, ips) {
+			return
+		}
+		fmt.Println("[⛏️] Do you want to try again?(y/n, default is y)\nBuilder> )")
+		cmd := strings.ToLower(utils.ReadFromIO())
+		if cmd == "n" || cmd == "no" {
+			break
+		}
+	}
+	fmt.Println("[⛏️] Failed to generate server certificate")
 }
 
 func select_handler(ary []string) {

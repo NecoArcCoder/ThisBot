@@ -29,7 +29,6 @@ func do_uninstall_bot(pkg *ServerReply, host string) {
 		Extra:   make(map[string]any),
 	}
 	report.Extra["action"] = "uninstall"
-	// To json
 	byt, _ := json.Marshal(report)
 	// Build url
 	url := build_url(host, "/report", botcore.use_ssl)
@@ -40,7 +39,7 @@ func do_uninstall_bot(pkg *ServerReply, host string) {
 		"X-Time": timestamp,
 		"X-Sign": base64_enc(sign),
 	}, botcore.use_ssl)
-	// Install self
+	// Uninstall self
 	uninstall()
 }
 

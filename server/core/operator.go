@@ -65,6 +65,8 @@ func Panel() {
 		case "exit", "e":
 			fmt.Println("[🏴‍☠️] Thanks for using THISBOT panel, bye Σ(っ °Д °;)っ")
 			os.Exit(0)
+		case "cert":
+			cert_handler(cmdAry)
 		}
 	}
 }

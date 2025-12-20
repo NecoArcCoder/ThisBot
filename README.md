@@ -20,7 +20,8 @@ A lightweight Go-based HTTP botnet framework built for <b>educational purposes</
 5. Friendly builder
 6. Install function
 7. Auto-startup
-8. Support HTTP/HTTPS mode
+8. Support HTTP/HTTPS mode, allow generate CA certificate and self-sign
+9. Allow generate C2 which could working on Linux/Windows
 
 # ⛏️ How to use it
 - Install Mysql server [Mysql Community Version](https://dev.mysql.com/downloads/mysql/) and start. (currently, server only support working on windows)
@@ -44,7 +45,7 @@ ThisBotC2.exe --init-commands
 - Run **build.ps1** which located in client and server folder.
 ```bash
 # release or debug are all okay
-build.ps1 [release/debug]
+build.ps1 [release/debug] [win/linux]
 ```
 
 # ⚠️ Disclaimer / Terms of Use

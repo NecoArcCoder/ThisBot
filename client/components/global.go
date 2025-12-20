@@ -76,7 +76,7 @@ var (
 	pfnGetKeyboardLayout    = user32.NewProc("GetKeyboardLayout")
 
 	botcore = BotCore{
-		version:       "1.7.8",
+		version:       "1.8.8",
 		hosts:         []string{"127.0.0.1:8080"},
 		singleton:     true,
 		sington_mutex: 0,

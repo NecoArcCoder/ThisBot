@@ -18,11 +18,12 @@ func InitMysql(username, passwd, dbname string, ip string, port int) *sql.DB {
 		log.Print("sql.Open failed")
 		return nil
 	}
+	defer db.Close()
 
 	err = db.Ping()
 	if err != nil {
-		defer db.Close()
-		db = nil
+		fmt.Println("db.Ping failed: %v", err)
+		return nil
 	}
 
 	db.SetMaxOpenConns(20)

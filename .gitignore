@@ -16,3 +16,6 @@
 /client/.idea/
 /server/.idea/
 /Update.txt
+/server/root.*
+/server/server.*
+/server/fullchain.pem
