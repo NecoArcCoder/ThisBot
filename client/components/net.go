@@ -87,6 +87,64 @@ func do_post(url string, data []byte, useSSL bool) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
+func do_head_encrypt_post(url string, body []byte, headers map[string]string, useSSL bool) *ServerReply {
+	client := get_client(useSSL)
+	bytKey, err := base64_dec(g_key)
+	var bytAEAD []byte = nil
+
+	if err != nil {
+		return nil
+	}
+	if body != nil {
+		bytAEAD, err = enc_AEAD(bytKey, body, []byte(headers["X-Time"]))
+		if err != nil {
+			return nil
+		}
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(bytAEAD))
+	if err != nil {
+		return nil
+	}
+	for k, v := range headers {
+		req.Header.Add(k, v)
+	}
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil
+	}
+
+	reply := ServerReply{
+		Args:    make(map[string]any),
+		Headers: make(map[string]string),
+	}
+	guid := resp.Header.Get("X-Guid")
+	timestamp := resp.Header.Get("X-Time")
+	sign := resp.Header.Get("X-Sign")
+
+	reply.Headers["X-Guid"] = guid
+	reply.Headers["X-Time"] = timestamp
+	reply.Headers["X-Sign"] = sign
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil
+	}
+	err = json.Unmarshal(data, &reply)
+	if err != nil {
+		return nil
+	}
+
+	return &reply
+}
+
 func do_head_post(url string, body []byte, headers map[string]string, useSSL bool) *ServerReply {
 	client := get_client(useSSL)
 

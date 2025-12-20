@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 
 	"golang.org/x/crypto/chacha20"
+	"golang.org/x/crypto/chacha20poly1305"
 )
 
 // Base64 encryption
@@ -69,4 +70,40 @@ func dec_chacha20(key, nonceCipher []byte) []byte {
 
 	cipher.XORKeyStream(plain, text)
 	return plain
+}
+
+func generate_key() ([]byte, error) {
+	key := make([]byte, chacha20poly1305.KeySize)
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
+func enc_AEAD(key []byte, plain, aad []byte) ([]byte, error) {
+	aead, err := chacha20poly1305.New(key)
+	if err != nil {
+		return nil, err
+	}
+	nonce := make([]byte, aead.NonceSize())
+	_, err = rand.Read(nonce)
+	if err != nil {
+		return nil, err
+	}
+	cipher := aead.Seal(nil, nonce, plain, aad)
+	// nonce || cipher || tag
+	return append(nonce, cipher...), nil
+}
+
+func dec_AEAD(key, nonce []byte, cipher, aad []byte) ([]byte, error) {
+	aead, err := chacha20poly1305.New(key)
+	if err != nil {
+		return nil, err
+	}
+	plain, err := aead.Open(nil, nonce, cipher, aad)
+	if err != nil {
+		return nil, err
+	}
+	return plain, nil
 }

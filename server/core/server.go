@@ -124,6 +124,26 @@ func http_sender(w http.ResponseWriter, guid, token string, reply *common.Server
 	return err
 }
 
+func http_sender_enc(w http.ResponseWriter, guid, token, key string, reply *common.ServerReply) error {
+	server_time := utils.GenerateUtcTimestampString()
+
+	// Setup http reply's header
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Guid", guid)
+	w.Header().Set("X-Time", server_time)
+	bytToken, _ := common.Base64Dec(token)
+	hmac := common.HmacSha256(bytToken, []byte(guid+server_time))
+	w.Header().Set("X-Sign", common.Base64Enc(hmac))
+	// Setup http reply's body
+	body, _ := json.Marshal(reply)
+	dec_key, _ := common.Base64Dec(key)
+	enc_body, _ := common.Enc_AEAD(dec_key, body, []byte(server_time))
+	// Send http reply
+	_, err := w.Write(enc_body)
+
+	return err
+}
+
 func check_package_legality(guid string, token string, x_sign string, x_time string) bool {
 	// Check overtime
 	current_time := utils.GenerateUtcTimestamp()
@@ -151,6 +171,7 @@ func RegisterRouters() *chi.Mux {
 	router.Post("/login", login_handler)
 	router.Post("/logout", logout_handler)
 	router.Post("/report", report_handler)
+	router.Post("/key", key_handler)
 
 	return router
 }
